@@ -88,6 +88,7 @@ impl TokenMessengerMinter {
     pub fn unlink_token_pair(&self) {}
     pub fn pause(&self) {}
     pub fn unpause(&self) {}
+    pub fn set_max_burn_amount_per_message(&self) {}
 }
 
 #[cfg(test)]

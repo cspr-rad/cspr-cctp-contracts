@@ -20,6 +20,7 @@ pub struct MessageTransmitter {
     max_message_body_size: Var<U256>,
     next_available_nonce: Var<u64>,
     used_nonces: SubModule<UsedNonces>,
+    attestation_threshold: Var<u32>,
     owner: Var<Address>,
 }
 
@@ -32,12 +33,14 @@ impl MessageTransmitter {
         version: u32,
         max_message_body_size: U256,
         next_available_nonce: u64,
+        attestation_threshold: u32,
         owner: Address,
     ) {
         self.local_domain.set(local_domain);
         self.version.set(version);
         self.max_message_body_size.set(max_message_body_size);
         self.next_available_nonce.set(next_available_nonce);
+        self.attestation_threshold.set(attestation_threshold);
         self.owner.set(owner);
     }
     pub fn send_message(&self) {
@@ -49,7 +52,7 @@ impl MessageTransmitter {
     pub fn receive_message(&self) {
         // todo: verify attestation signatures
         // todo: check if the signature threshold is met
-        // todo: call token_messenger_minter handleReceiveMessage
+        // todo: call token_messenger_minter::handle_receive_message
 
         // check that the nonce has not been used yet
         // mark the nonce as used
@@ -81,6 +84,12 @@ impl MessageTransmitter {
     }
     pub fn get_nonce_pda(&self) {
         todo!("Implement");
+    }
+    pub fn enable_attester(&self){
+        todo!("Implement");
+    }
+    pub fn disable_attester(&self){
+        todo!("Implement")
     }
 }
 
@@ -312,7 +321,8 @@ pub(crate) mod setup_tests {
             local_domain: 31u32, // 31: CA
             version: 1u32,
             max_message_body_size: 1_000_000_000.into(), // unreasonably high for development
-            next_available_nonce: 0,                     // start from nonce = 0
+            next_available_nonce: 1,                     // start from nonce = 1
+            attestation_threshold: 1,                    // default: 1
             owner: env.get_account(0),                   // default account as owner
         };
         let message_transmitter = setup_with_args(&env, args);

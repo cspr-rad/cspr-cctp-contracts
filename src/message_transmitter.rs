@@ -186,8 +186,8 @@ impl<'a> Message<'a>{
     fn read_u32(&self, index: usize) -> Result<u32, Error>
     {
         Ok(u32::from_be_bytes(
-            // u32 size is 32 bytes
-            self.data[index..(index + 32)]
+            // u32 size is 32 bits = 4 bytes
+            self.data[index..(index + 4)]
                 .try_into()
                 .map_err(|_| Error)?
         ))
@@ -196,8 +196,8 @@ impl<'a> Message<'a>{
     fn read_u64(&self, index: usize) -> Result<u64, Error>
     {
         Ok(u64::from_be_bytes(
-            // u32 size is 32 bytes
-            self.data[index..(index + 64)]
+            // 64 size is 64 bits = 8 bytes
+            self.data[index..(index + 8)]
                 .try_into()
                 .map_err(|_| Error)?
         ))

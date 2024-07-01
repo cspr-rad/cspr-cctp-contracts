@@ -7,9 +7,6 @@ pub mod errors;
 pub mod events;
 mod tests;
 
-// type alias for generic Pubkey
-pub type Pubkey = [u8; 32];
-
 #[odra::module]
 pub struct MessageTransmitter {
     local_domain: Var<u32>,

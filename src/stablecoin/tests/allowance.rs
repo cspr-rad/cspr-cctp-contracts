@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod allowance_tests {
-    use crate::stablecoin::errors::Error::InsufficientAllowance;
     use crate::stablecoin::cross_contract_test::StablecoinClientContractHostRef;
+    use crate::stablecoin::errors::Error::InsufficientAllowance;
     use crate::stablecoin::setup_tests::{
         invert_address, setup, setup_with_args, ALLOWANCE_AMOUNT_1, ALLOWANCE_AMOUNT_2,
         TOKEN_DECIMALS, TOKEN_NAME, TOKEN_SYMBOL, TOKEN_TOTAL_SUPPLY, TRANSFER_AMOUNT_1,
@@ -51,8 +51,7 @@ mod allowance_tests {
         let alice = env.get_account(1);
         let token_address = *stablecoin.address();
         let client_contract = StablecoinClientContractHostRef::deploy(&env, NoArgs);
-        let another_client_contract =
-            StablecoinClientContractHostRef::deploy(&env, NoArgs);
+        let another_client_contract = StablecoinClientContractHostRef::deploy(&env, NoArgs);
         let client_contract_address = client_contract.address();
         let another_client_contract_address = another_client_contract.address();
         test_approve_for(&mut stablecoin, owner, owner, alice);

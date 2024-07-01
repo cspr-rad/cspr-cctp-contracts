@@ -3,8 +3,8 @@ mod transfer_tests {
     use odra::casper_types::U256;
     use odra::host::{Deployer, HostRef, NoArgs};
 
-    use crate::stablecoin::errors::Error::{CannotTargetSelfUser, InsufficientBalance};
     use crate::stablecoin::cross_contract_test::StablecoinClientContractHostRef;
+    use crate::stablecoin::errors::Error::{CannotTargetSelfUser, InsufficientBalance};
     use crate::stablecoin::setup_tests::{
         setup, ALLOWANCE_AMOUNT_1, TOKEN_TOTAL_SUPPLY, TRANSFER_AMOUNT_1,
     };

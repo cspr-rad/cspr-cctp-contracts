@@ -2,13 +2,13 @@
 use odra::prelude::*;
 use odra::{casper_types::U256, Address, Mapping, SubModule, UnwrapOrRevert, Var};
 
-#[cfg(test)]
-mod tests;
+pub mod cross_contract_test;
 pub mod errors;
 pub mod events;
 pub mod storage;
+#[cfg(test)]
+mod tests;
 pub mod utils;
-pub mod cross_contract_test;
 
 use crate::stablecoin::errors::Error;
 
@@ -473,7 +473,7 @@ impl Stablecoin {
 }
 
 #[cfg(test)]
-pub (crate) mod setup_tests {
+pub(crate) mod setup_tests {
     use alloc::string::ToString;
     use alloc::vec;
     use odra::casper_types::account::AccountHash;

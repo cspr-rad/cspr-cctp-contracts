@@ -1,5 +1,5 @@
-use odra::{prelude::*, Mapping};
 use crate::Hash;
+use odra::{prelude::*, Mapping};
 
 #[odra::module()]
 /// Storage module for the allowances of the token.

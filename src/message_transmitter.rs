@@ -51,7 +51,6 @@ impl MessageTransmitter {
         // todo: check if the signature threshold is met
         // todo: call token_messenger_minter handleReceiveMessage
 
-
         // check that the nonce has not been used yet
         // mark the nonce as used
         todo!("Implement");
@@ -85,11 +84,11 @@ impl MessageTransmitter {
     }
 }
 
-pub struct Message<'a>{
-    data: &'a[u8]
+pub struct Message<'a> {
+    data: &'a [u8],
 }
 
-impl<'a> Message<'a>{
+impl<'a> Message<'a> {
     const VERSION_INDEX: usize = 0;
     const SOURCE_DOMAIN_INDEX: usize = 4;
     const DESTINATION_DOMAIN_INDEX: usize = 8;
@@ -99,9 +98,9 @@ impl<'a> Message<'a>{
     const DESTINATION_CALLER_INDEX: usize = 84;
     const MESSAGE_BODY_INDEX: usize = 116;
 
-    pub fn new(message_bytes: &'a [u8]) ->Self {
-        Message{
-            data: &message_bytes
+    pub fn new(message_bytes: &'a [u8]) -> Self {
+        Message {
+            data: &message_bytes,
         }
     }
 
@@ -116,7 +115,7 @@ impl<'a> Message<'a>{
         // [0;32] if the destination caller can be any
         destination_caller: &Pubkey,
         message_body: &Vec<u8>,
-    ) -> Vec<u8>{
+    ) -> Vec<u8> {
         let mut output: Vec<u8> = Vec::new();
         output[Self::VERSION_INDEX..Self::SOURCE_DOMAIN_INDEX]
             .copy_from_slice(&version.to_be_bytes());
@@ -135,7 +134,7 @@ impl<'a> Message<'a>{
         }
         output
     }
-    
+
     /// Returns Keccak hash of the message
     pub fn hash(&self) {
         todo!("Add keccak hasher for bytes");
@@ -181,23 +180,17 @@ impl<'a> Message<'a>{
         &self.data[Self::MESSAGE_BODY_INDEX..]
     }
 
-    fn read_u32(&self, index: usize) -> Result<u32, Error>
-    {
+    fn read_u32(&self, index: usize) -> Result<u32, Error> {
         Ok(u32::from_be_bytes(
             // u32 size is 32 bits = 4 bytes
-            self.data[index..(index + 4)]
-                .try_into()
-                .unwrap()
+            self.data[index..(index + 4)].try_into().unwrap(),
         ))
     }
 
-    fn read_u64(&self, index: usize) -> Result<u64, Error>
-    {
+    fn read_u64(&self, index: usize) -> Result<u64, Error> {
         Ok(u64::from_be_bytes(
             // 64 size is 64 bits = 8 bytes
-            self.data[index..(index + 8)]
-                .try_into()
-                .unwrap()
+            self.data[index..(index + 8)].try_into().unwrap(),
         ))
     }
 
@@ -229,8 +222,8 @@ impl<'a> BurnMessage<'a> {
 
     /// Validates source array size and returns a new message
     pub fn new(message_bytes: &'a [u8]) -> Self {
-        Self{
-            data: &message_bytes
+        Self {
+            data: &message_bytes,
         }
     }
 
@@ -275,7 +268,8 @@ impl<'a> BurnMessage<'a> {
 
     /// Returns amount field
     pub fn amount(&self) -> u64 {
-        self.read_u64(Self::AMOUNT_INDEX + Self::AMOUNT_OFFSET).unwrap()
+        self.read_u64(Self::AMOUNT_INDEX + Self::AMOUNT_OFFSET)
+            .unwrap()
     }
 
     /// Returns message_sender field
@@ -283,23 +277,17 @@ impl<'a> BurnMessage<'a> {
         self.read_pubkey(Self::MSG_SENDER_INDEX).unwrap()
     }
 
-    fn read_u32(&self, index: usize) -> Result<u32, Error>
-    {
+    fn read_u32(&self, index: usize) -> Result<u32, Error> {
         Ok(u32::from_be_bytes(
             // u32 size is 32 bits = 4 bytes
-            self.data[index..(index + 4)]
-                .try_into()
-                .unwrap()
+            self.data[index..(index + 4)].try_into().unwrap(),
         ))
     }
 
-    fn read_u64(&self, index: usize) -> Result<u64, Error>
-    {
+    fn read_u64(&self, index: usize) -> Result<u64, Error> {
         Ok(u64::from_be_bytes(
             // 64 size is 64 bits = 8 bytes
-            self.data[index..(index + 8)]
-                .try_into()
-                .unwrap()
+            self.data[index..(index + 8)].try_into().unwrap(),
         ))
     }
 

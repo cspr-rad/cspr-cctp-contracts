@@ -15,17 +15,17 @@ use storage::RemoteTokenMessengers;
 #[odra::module]
 pub struct TokenMessengerMinter {
     local_message_transmitter: Var<Address>,
-    remote_token_messengers: SubModule<RemoteTokenMessengers>
+    remote_token_messengers: SubModule<RemoteTokenMessengers>,
+    owner: Var<Address>,
 }
 
 #[odra::module]
 impl TokenMessengerMinter {
     #[allow(clippy::too_many_arguments)]
-    pub fn init(
-        &mut self,
-        local_message_transmitter: Address
-    ) {
-        self.local_message_transmitter.set(local_message_transmitter);
+    pub fn init(&mut self, local_message_transmitter: Address, owner: Address) {
+        self.local_message_transmitter
+            .set(local_message_transmitter);
+        self.owner.set(owner);
     }
     /* Ascii art is temporary
 
@@ -62,8 +62,16 @@ impl TokenMessengerMinter {
     pub fn accept_ownership(&self) {
         todo!("Implement");
     }
-    pub fn add_remote_token_messenger(&self) {}
-    pub fn remove_remote_token_messenger(&self) {}
+    pub fn add_remote_token_messenger(&mut self, remote_token_messenger: Pubkey) {
+        // todo: access control
+        self.remote_token_messengers
+            .add_remote_token_messenger(remote_token_messenger);
+    }
+    pub fn remove_remote_token_messenger(&mut self, remote_token_messenger: Pubkey) {
+        // todo: access control
+        self.remote_token_messengers
+            .remove_remote_token_messenger(remote_token_messenger);
+    }
 
     /* Ascii art is temporary
 
@@ -82,30 +90,29 @@ impl TokenMessengerMinter {
     pub fn unpause(&self) {}
 }
 
-
 #[cfg(test)]
 pub(crate) mod setup_tests {
     use odra::host::Deployer;
     use odra::host::HostEnv;
 
-    use crate::token_messenger_minter::{TokenMessengerMinterHostRef, TokenMessengerMinterInitArgs};
+    use crate::token_messenger_minter::{
+        TokenMessengerMinterHostRef, TokenMessengerMinterInitArgs,
+    };
 
-    pub fn setup() -> (
-        HostEnv,
-        TokenMessengerMinterHostRef,
-    ) {
+    pub fn setup() -> (HostEnv, TokenMessengerMinterHostRef) {
         let env = odra_test::env();
         let args = TokenMessengerMinterInitArgs {
-            local_message_transmitter: env.get_account(0) // default account
+            local_message_transmitter: env.get_account(0), // default account,
+            owner: env.get_account(0),                     //default account
         };
         let token_messenger_minter = setup_with_args(&env, args);
-        (
-            env,
-            token_messenger_minter,
-        )
+        (env, token_messenger_minter)
     }
 
-    pub fn setup_with_args(env: &HostEnv, args: TokenMessengerMinterInitArgs) -> TokenMessengerMinterHostRef {
+    pub fn setup_with_args(
+        env: &HostEnv,
+        args: TokenMessengerMinterInitArgs,
+    ) -> TokenMessengerMinterHostRef {
         TokenMessengerMinterHostRef::deploy(env, args)
     }
 }

@@ -7,3 +7,5 @@ mod install_message_transmitter {
         let (_env, _token_messenger_minter) = setup();
     }
 }
+
+pub mod remote_token_messenger;

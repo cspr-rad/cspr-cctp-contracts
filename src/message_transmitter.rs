@@ -3,6 +3,8 @@ use odra::prelude::*;
 use odra::Address;
 use odra::Var;
 
+use crate::Pubkey;
+
 pub mod errors;
 pub mod events;
 mod tests;
@@ -71,6 +73,32 @@ impl MessageTransmitter {
     }
     pub fn get_nonce_pda(&self) {
         todo!("Implement");
+    }
+}
+
+impl MessageTransmitter {
+    fn format_message(
+        &self,
+        version: u32,
+        local_domain: u32,
+        destination_domain: u32,
+        nonce: u64,
+        sender: &Pubkey,
+        recipient: &Pubkey,
+        // [0;32] if the destination caller can be any
+        destination_caller: &Pubkey,
+        message_body: &Vec<u8>,
+    ) {
+        // todo: format message
+    }
+    pub fn format_burn_message_body(
+        version: u32,
+        burn_token: &Pubkey,
+        mint_recipient: &Pubkey,
+        amount: u64,
+        message_sender: &Pubkey,
+    ) {
+        // todo: format burn message body
     }
 }
 

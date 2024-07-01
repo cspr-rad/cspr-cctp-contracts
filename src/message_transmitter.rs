@@ -1,6 +1,4 @@
-use core::fmt::Display;
 use core::fmt::Error;
-use num_traits::FromBytes;
 use odra::casper_types::U256;
 use odra::prelude::*;
 use odra::Address;
@@ -107,7 +105,7 @@ impl<'a> Message<'a>{
         }
     }
 
-    fn format_message(
+    pub fn format_message(
         &self,
         version: u32,
         local_domain: u32,

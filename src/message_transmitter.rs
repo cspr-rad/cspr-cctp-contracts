@@ -1,12 +1,19 @@
+use core::fmt::Display;
+use core::fmt::Error;
+use num_traits::FromBytes;
 use odra::casper_types::U256;
 use odra::prelude::*;
 use odra::Address;
+use odra::SubModule;
 use odra::Var;
+use storage::UsedNonces;
 
+use crate::Hash;
 use crate::Pubkey;
 
 pub mod errors;
 pub mod events;
+pub mod storage;
 mod tests;
 
 #[odra::module]
@@ -15,6 +22,7 @@ pub struct MessageTransmitter {
     version: Var<u32>,
     max_message_body_size: Var<U256>,
     next_available_nonce: Var<u64>,
+    used_nonces: SubModule<UsedNonces>,
     owner: Var<Address>,
 }
 
@@ -45,6 +53,10 @@ impl MessageTransmitter {
         // todo: verify attestation signatures
         // todo: check if the signature threshold is met
         // todo: call token_messenger_minter handleReceiveMessage
+
+
+        // check that the nonce has not been used yet
+        // mark the nonce as used
         todo!("Implement");
     }
     pub fn replace_message(&self) {
@@ -76,7 +88,26 @@ impl MessageTransmitter {
     }
 }
 
-impl MessageTransmitter {
+pub struct Message<'a>{
+    data: &'a[u8]
+}
+
+impl<'a> Message<'a>{
+    const VERSION_INDEX: usize = 0;
+    const SOURCE_DOMAIN_INDEX: usize = 4;
+    const DESTINATION_DOMAIN_INDEX: usize = 8;
+    const NONCE_INDEX: usize = 12;
+    const SENDER_INDEX: usize = 20;
+    const RECIPIENT_INDEX: usize = 52;
+    const DESTINATION_CALLER_INDEX: usize = 84;
+    const MESSAGE_BODY_INDEX: usize = 116;
+
+    pub fn new(message_bytes: &'a [u8]) ->Self {
+        Message{
+            data: &message_bytes
+        }
+    }
+
     fn format_message(
         &self,
         version: u32,
@@ -88,10 +119,108 @@ impl MessageTransmitter {
         // [0;32] if the destination caller can be any
         destination_caller: &Pubkey,
         message_body: &Vec<u8>,
-    ) {
-        // todo: format message
+    ) -> Vec<u8>{
+        let mut output: Vec<u8> = Vec::new();
+        output[Self::VERSION_INDEX..Self::SOURCE_DOMAIN_INDEX]
+            .copy_from_slice(&version.to_be_bytes());
+        output[Self::SOURCE_DOMAIN_INDEX..Self::DESTINATION_DOMAIN_INDEX]
+            .copy_from_slice(&local_domain.to_be_bytes());
+        output[Self::DESTINATION_DOMAIN_INDEX..Self::NONCE_INDEX]
+            .copy_from_slice(&destination_domain.to_be_bytes());
+        output[Self::NONCE_INDEX..Self::SENDER_INDEX].copy_from_slice(&nonce.to_be_bytes());
+        output[Self::SENDER_INDEX..Self::RECIPIENT_INDEX].copy_from_slice(sender.as_ref());
+        output[Self::RECIPIENT_INDEX..Self::DESTINATION_CALLER_INDEX]
+            .copy_from_slice(recipient.as_ref());
+        output[Self::DESTINATION_CALLER_INDEX..Self::MESSAGE_BODY_INDEX]
+            .copy_from_slice(destination_caller.as_ref());
+        if !message_body.is_empty() {
+            output[Self::MESSAGE_BODY_INDEX..].copy_from_slice(message_body.as_slice());
+        }
+        output
     }
-    pub fn format_burn_message_body(
+    
+    /// Returns Keccak hash of the message
+    pub fn hash(&self) {
+        todo!("Add keccak hasher for bytes");
+    }
+
+    /// Returns version field
+    pub fn version(&self) -> u32 {
+        self.read_u32::<u32>(Self::VERSION_INDEX).unwrap()
+    }
+
+    /// Returns sender field
+    pub fn sender(&self) -> Pubkey {
+        self.read_pubkey(Self::SENDER_INDEX).unwrap()
+    }
+
+    /// Returns recipient field
+    pub fn recipient(&self) -> Pubkey {
+        self.read_pubkey(Self::RECIPIENT_INDEX).unwrap()
+    }
+
+    /// Returns source_domain field
+    pub fn source_domain(&self) -> u32 {
+        self.read_u32::<u32>(Self::SOURCE_DOMAIN_INDEX).unwrap()
+    }
+
+    /// Returns destination_domain field
+    pub fn destination_domain(&self) -> u32 {
+        self.read_u32::<u32>(Self::DESTINATION_DOMAIN_INDEX).unwrap()
+    }
+
+    /// Returns destination_caller field
+    pub fn destination_caller(&self) -> Pubkey {
+        self.read_pubkey(Self::DESTINATION_CALLER_INDEX).unwrap()
+    }
+
+    /// Returns nonce field
+    pub fn nonce(&self) -> u64 {
+        self.read_u64::<u64>(Self::NONCE_INDEX).unwrap()
+    }
+
+    /// Returns message_body field
+    pub fn message_body(&self) -> &[u8] {
+        &self.data[Self::MESSAGE_BODY_INDEX..]
+    }
+
+    fn read_u32<T>(&self, index: usize) -> Result<u32, Error>
+    where
+        T: num_traits::PrimInt + FromBytes + Display,
+        &'a <T as FromBytes>::Bytes: TryFrom<&'a [u8]> + 'a,
+    {
+        Ok(u32::from_be_bytes(
+            // u32 size is 32 bytes
+            self.data[index..(index + 32)]
+                .try_into()
+                .map_err(|_| Error)?
+        ))
+    }
+
+    fn read_u64<T>(&self, index: usize) -> Result<u64, Error>
+    where
+        T: num_traits::PrimInt + FromBytes + Display,
+        &'a <T as FromBytes>::Bytes: TryFrom<&'a [u8]> + 'a,
+    {
+        Ok(u64::from_be_bytes(
+            // u32 size is 32 bytes
+            self.data[index..(index + 64)]
+                .try_into()
+                .map_err(|_| Error)?
+        ))
+    }
+
+    /// Reads pubkey field at the given offset
+    fn read_pubkey(&self, index: usize) -> Result<Pubkey, Error> {
+        Ok(Pubkey::try_from(
+            // Pubkey size is 32 bytes
+            &self.data[index..(index + 32)],
+        )
+        .map_err(|_| Error)?)
+    }
+
+
+    fn format_burn_message_body(
         version: u32,
         burn_token: &Pubkey,
         mint_recipient: &Pubkey,
@@ -99,6 +228,10 @@ impl MessageTransmitter {
         message_sender: &Pubkey,
     ) {
         // todo: format burn message body
+    }
+    // todo: replace message_hash with a keccak hash
+    fn verify_attestation_signatures(message_hash: &Vec<u8>, attestation: &Vec<u8>){
+        // todo: verify signatures using ECDSA, ED25519 or SECP256k1?
     }
 }
 

@@ -8,7 +8,6 @@ use odra::SubModule;
 use odra::Var;
 use storage::UsedNonces;
 
-use crate::Hash;
 use crate::Pubkey;
 
 pub mod errors;
@@ -146,7 +145,7 @@ impl<'a> Message<'a>{
 
     /// Returns version field
     pub fn version(&self) -> u32 {
-        self.read_u32::<u32>(Self::VERSION_INDEX).unwrap()
+        self.read_u32(Self::VERSION_INDEX).unwrap()
     }
 
     /// Returns sender field
@@ -161,12 +160,12 @@ impl<'a> Message<'a>{
 
     /// Returns source_domain field
     pub fn source_domain(&self) -> u32 {
-        self.read_u32::<u32>(Self::SOURCE_DOMAIN_INDEX).unwrap()
+        self.read_u32(Self::SOURCE_DOMAIN_INDEX).unwrap()
     }
 
     /// Returns destination_domain field
     pub fn destination_domain(&self) -> u32 {
-        self.read_u32::<u32>(Self::DESTINATION_DOMAIN_INDEX).unwrap()
+        self.read_u32(Self::DESTINATION_DOMAIN_INDEX).unwrap()
     }
 
     /// Returns destination_caller field
@@ -176,7 +175,7 @@ impl<'a> Message<'a>{
 
     /// Returns nonce field
     pub fn nonce(&self) -> u64 {
-        self.read_u64::<u64>(Self::NONCE_INDEX).unwrap()
+        self.read_u64(Self::NONCE_INDEX).unwrap()
     }
 
     /// Returns message_body field
@@ -184,10 +183,7 @@ impl<'a> Message<'a>{
         &self.data[Self::MESSAGE_BODY_INDEX..]
     }
 
-    fn read_u32<T>(&self, index: usize) -> Result<u32, Error>
-    where
-        T: num_traits::PrimInt + FromBytes + Display,
-        &'a <T as FromBytes>::Bytes: TryFrom<&'a [u8]> + 'a,
+    fn read_u32(&self, index: usize) -> Result<u32, Error>
     {
         Ok(u32::from_be_bytes(
             // u32 size is 32 bytes
@@ -197,10 +193,7 @@ impl<'a> Message<'a>{
         ))
     }
 
-    fn read_u64<T>(&self, index: usize) -> Result<u64, Error>
-    where
-        T: num_traits::PrimInt + FromBytes + Display,
-        &'a <T as FromBytes>::Bytes: TryFrom<&'a [u8]> + 'a,
+    fn read_u64(&self, index: usize) -> Result<u64, Error>
     {
         Ok(u64::from_be_bytes(
             // u32 size is 32 bytes

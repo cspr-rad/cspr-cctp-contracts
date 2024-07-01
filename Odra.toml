@@ -1,0 +1,11 @@
+[[contracts]]
+fqn = "stablecoin::Stablecoin"
+
+[[contracts]]
+fqn = "stablecoin::tests::client_contract_tests::StablecoinClientContract"
+
+[[contracts]]
+fqn = "token_messenger_minter::TokenMessengerMinter"
+
+[[contracts]]
+fqn = "message_transmitter::MessageTransmitter"

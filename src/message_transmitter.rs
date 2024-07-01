@@ -6,28 +6,9 @@ use odra::Var;
 mod tests;
 pub mod errors;
 pub mod events;
-pub mod storage;
 
 // type alias for generic Pubkey
 pub type Pubkey = [u8;32];
-/* From ETH implementation
-    // ============ State Variables ============
-    // Domain of chain on which the contract is deployed
-    uint32 public immutable localDomain;
-
-    // Message Format version
-    uint32 public immutable version;
-
-    // Maximum size of message body, in bytes.
-    // This value is set by owner.
-    uint256 public maxMessageBodySize;
-
-    // Next available nonce from this source domain
-    uint64 public nextAvailableNonce;
-
-    // Maps a bytes32 hash of (sourceDomain, nonce) -> uint256 (0 if unused, 1 if used)
-    mapping(bytes32 => uint256) public usedNonces;
-*/
 
 #[odra::module]
 pub struct MessageTransmitter {

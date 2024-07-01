@@ -15,7 +15,10 @@ pub struct TokenMessengerMinter {
 impl TokenMessengerMinter {
 
     pub fn depositForBurn(&self){
-
+        // this entry point may be called by a user
+        // tokens will be burned and a formatted burn message will be sent to the MessageTransmitter
+        // the MessageTransmitter will then emit a MessageSent Event
+        // the Message body will be the BurnMessage
     }
 
     pub fn handleReceiveMessage(&self){
@@ -25,24 +28,3 @@ impl TokenMessengerMinter {
         // ... for other messages
     }
 }
-
-/* What should the TokenMessengerMinter do?
-    depositForBurn(
-        amount,
-        destinationDomain,
-        mintRecipient,
-        burnToken
-    ) // will call message_transmitter to send a burn message
-    
-    handleReceiveMessage{
-   
-    } // will be called by message_transmitter to handle a signed mint message
-      // must verify all the signatures
-
-    add RemoteTokenMessenger
-    remove RemoteTokenMessenger
-    addLocalMinter
-    removeLocalMinter
-
-    LocalMessageTransmitter Address is set on deployment.
-*/

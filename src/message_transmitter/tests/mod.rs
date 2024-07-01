@@ -4,6 +4,6 @@ mod install_message_transmitter {
 
     #[test]
     fn test_stablecoin_mint() {
-        let (env, message_transmitter) = setup();
+        let (_env, _message_transmitter) = setup();
     }
 }

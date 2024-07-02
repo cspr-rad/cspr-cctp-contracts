@@ -4,7 +4,7 @@ use odra::ExecutionError::AdditionOverflow;
 
 use odra::casper_types::bytesrepr::ToBytes;
 use odra::{prelude::*, Mapping};
-use odra::{Address, UnwrapOrRevert};
+use odra::UnwrapOrRevert;
 
 use crate::stablecoin::errors::Error::{InvalidState, Overflow};
 
@@ -18,6 +18,8 @@ const NAME_KEY: &str = "name";
 const DECIMALS_KEY: &str = "decimals";
 const SYMBOL_KEY: &str = "symbol";
 const TOTAL_SUPPLY_KEY: &str = "total_supply";
+
+type GenericAddress = [u8;32];
 
 #[odra::module]
 /// Storage module for the name of the token.
@@ -120,27 +122,27 @@ pub struct StablecoinBalancesStorage;
 #[odra::module]
 impl StablecoinBalancesStorage {
     /// Sets the balance of the given account.
-    pub fn set(&self, account: &Address, balance: U256) {
+    pub fn set(&self, account: &GenericAddress, balance: U256) {
         self.env()
             .set_dictionary_value(BALANCES_KEY, self.key(account).as_bytes(), balance);
     }
 
     /// Gets the balance of the given account.
-    pub fn get_or_default(&self, account: &Address) -> U256 {
+    pub fn get_or_default(&self, account: &GenericAddress) -> U256 {
         self.env()
             .get_dictionary_value(BALANCES_KEY, self.key(account).as_bytes())
             .unwrap_or_default()
     }
 
     /// Adds the given amount to the balance of the given account.
-    pub fn add(&self, account: &Address, amount: U256) {
+    pub fn add(&self, account: &GenericAddress, amount: U256) {
         let balance = self.get_or_default(account);
         let new_balance = balance.checked_add(amount).unwrap_or_revert(&self.env());
         self.set(account, new_balance);
     }
 
     /// Subtracts the given amount from the balance of the given account.
-    pub fn subtract(&self, account: &Address, amount: U256) {
+    pub fn subtract(&self, account: &GenericAddress, amount: U256) {
         let balance = self.get_or_default(account);
         let new_balance = balance
             .checked_sub(amount)
@@ -148,7 +150,7 @@ impl StablecoinBalancesStorage {
         self.set(account, new_balance);
     }
 
-    fn key(&self, owner: &Address) -> String {
+    fn key(&self, owner: &GenericAddress) -> String {
         // PRENOTE: This note is copied from the original implementation of CEP-18.
         // NOTE: As for now dictionary item keys are limited to 64 characters only. Instead of using
         // hashing (which will effectively hash a hash) we'll use base64. Preimage is 33 bytes for
@@ -168,20 +170,20 @@ pub struct StablecoinAllowancesStorage;
 #[odra::module]
 impl StablecoinAllowancesStorage {
     /// Sets the allowance of the given owner and spender.
-    pub fn set(&self, owner: &Address, spender: &Address, amount: U256) {
+    pub fn set(&self, owner: &GenericAddress, spender: &GenericAddress, amount: U256) {
         self.env()
             .set_dictionary_value(ALLOWANCES_KEY, &self.key(owner, spender), amount);
     }
 
     /// Gets the allowance of the given owner and spender.
-    pub fn get_or_default(&self, owner: &Address, spender: &Address) -> U256 {
+    pub fn get_or_default(&self, owner: &GenericAddress, spender: &GenericAddress) -> U256 {
         self.env()
             .get_dictionary_value(ALLOWANCES_KEY, &self.key(owner, spender))
             .unwrap_or_default()
     }
 
     /// Adds the given amount to the allowance of the given owner and spender.
-    pub fn add(&self, owner: &Address, spender: &Address, amount: U256) {
+    pub fn add(&self, owner: &GenericAddress, spender: &GenericAddress, amount: U256) {
         let allowance = self.get_or_default(owner, spender);
         let new_allowance = allowance
             .checked_add(amount)
@@ -190,7 +192,7 @@ impl StablecoinAllowancesStorage {
     }
 
     /// Subtracts the given amount from the allowance of the given owner and spender.
-    pub fn subtract(&self, owner: &Address, spender: &Address, amount: U256) {
+    pub fn subtract(&self, owner: &GenericAddress, spender: &GenericAddress, amount: U256) {
         let allowance = self.get_or_default(owner, spender);
         let new_allowance = allowance
             .checked_sub(amount)
@@ -198,7 +200,7 @@ impl StablecoinAllowancesStorage {
         self.set(owner, spender, new_allowance);
     }
 
-    fn key(&self, owner: &Address, spender: &Address) -> [u8; 64] {
+    fn key(&self, owner: &GenericAddress, spender: &GenericAddress) -> [u8; 64] {
         let mut result = [0u8; 64];
         let mut preimage = Vec::new();
         preimage.append(&mut owner.to_bytes().unwrap_or_revert(&self.env()));
@@ -217,20 +219,20 @@ pub struct StablecoinMinterAllowancesStorage;
 #[odra::module]
 impl StablecoinMinterAllowancesStorage {
     /// Sets the allowance of the given owner and spender.
-    pub fn set(&self, minter: &Address, amount: U256) {
+    pub fn set(&self, minter: &GenericAddress, amount: U256) {
         self.env()
             .set_dictionary_value(MINTER_ALLOWANCES_KEY, &self.key(minter), amount);
     }
 
     /// Gets the allowance of the given owner and spender.
-    pub fn get_or_default(&self, minter: &Address) -> U256 {
+    pub fn get_or_default(&self, minter: &GenericAddress) -> U256 {
         self.env()
             .get_dictionary_value(MINTER_ALLOWANCES_KEY, &self.key(minter))
             .unwrap_or_default()
     }
 
     /// Adds the given amount to the allowance of the given owner and spender.
-    pub fn add(&self, minter: &Address, amount: U256) {
+    pub fn add(&self, minter: &GenericAddress, amount: U256) {
         let allowance = self.get_or_default(minter);
         let new_allowance = allowance
             .checked_add(amount)
@@ -239,7 +241,7 @@ impl StablecoinMinterAllowancesStorage {
     }
 
     /// Subtracts the given amount from the allowance of the given owner and spender.
-    pub fn subtract(&self, minter: &Address, amount: U256) {
+    pub fn subtract(&self, minter: &GenericAddress, amount: U256) {
         let allowance = self.get_or_default(minter);
         let new_allowance = allowance
             .checked_sub(amount)
@@ -247,7 +249,7 @@ impl StablecoinMinterAllowancesStorage {
         self.set(minter, new_allowance);
     }
 
-    fn key(&self, account: &Address) -> [u8; 64] {
+    fn key(&self, account: &GenericAddress) -> [u8; 64] {
         let mut result = [0u8; 64];
         let mut preimage = Vec::new();
         preimage.append(&mut account.to_bytes().unwrap_or_revert(&self.env()));
@@ -279,12 +281,12 @@ pub mod Roles {
 #[odra::module(events=[RoleConfigured, RoleRevoked])]
 /// Storage module for the allowances of the token.
 pub struct StablecoinRoles {
-    roles: Mapping<(Roles::Role, Address), bool>,
+    roles: Mapping<(Roles::Role, GenericAddress), bool>,
 }
 
 #[odra::module]
 impl StablecoinRoles {
-    pub fn configure_role(&mut self, role: &Roles::Role, account: &Address) {
+    pub fn configure_role(&mut self, role: &Roles::Role, account: &GenericAddress) {
         self.roles.set(&(*role, *account), true);
         self.env().emit_event(RoleConfigured {
             role: *role,
@@ -292,7 +294,7 @@ impl StablecoinRoles {
         });
     }
 
-    pub fn revoke_role(&mut self, role: &Roles::Role, account: &Address) {
+    pub fn revoke_role(&mut self, role: &Roles::Role, account: &GenericAddress) {
         if self.has_role(role, account) {
             self.roles.set(&(*role, *account), false);
             self.env().emit_event(RoleRevoked {
@@ -302,28 +304,28 @@ impl StablecoinRoles {
         }
     }
 
-    pub fn is_minter(&self, account: &Address) -> bool {
+    pub fn is_minter(&self, account: &GenericAddress) -> bool {
         self.has_role(&Roles::Minter, account)
     }
-    pub fn is_master_minter(&self, account: &Address) -> bool {
+    pub fn is_master_minter(&self, account: &GenericAddress) -> bool {
         self.has_role(&Roles::MasterMinter, account)
     }
-    pub fn is_blacklister(&self, account: &Address) -> bool {
+    pub fn is_blacklister(&self, account: &GenericAddress) -> bool {
         self.has_role(&Roles::Blacklister, account)
     }
-    pub fn is_blacklisted(&self, account: &Address) -> bool {
+    pub fn is_blacklisted(&self, account: &GenericAddress) -> bool {
         self.has_role(&Roles::Blacklisted, account)
     }
-    pub fn is_pauser(&self, account: &Address) -> bool {
+    pub fn is_pauser(&self, account: &GenericAddress) -> bool {
         self.has_role(&Roles::Pauser, account)
     }
-    pub fn is_controller(&self, account: &Address) -> bool {
+    pub fn is_controller(&self, account: &GenericAddress) -> bool {
         self.has_role(&Roles::Controller, account)
     }
-    pub fn is_owner(&self, account: &Address) -> bool {
+    pub fn is_owner(&self, account: &GenericAddress) -> bool {
         self.has_role(&Roles::Owner, account)
     }
-    pub fn has_role(&self, role: &Roles::Role, account: &Address) -> bool {
+    pub fn has_role(&self, role: &Roles::Role, account: &GenericAddress) -> bool {
         self.roles.get_or_default(&(*role, *account))
     }
 }

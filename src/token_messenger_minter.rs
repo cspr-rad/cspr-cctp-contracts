@@ -8,6 +8,7 @@ use crate::Pubkey;
 pub mod errors;
 pub mod events;
 pub mod storage;
+mod burn_message;
 mod tests;
 
 use storage::RemoteTokenMessengers;

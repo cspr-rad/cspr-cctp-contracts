@@ -3,7 +3,7 @@ mod allowance_tests {
     use crate::stablecoin::cross_contract_test::StablecoinClientContractHostRef;
     use crate::stablecoin::errors::Error::InsufficientAllowance;
     use crate::stablecoin::setup_tests::{
-        invert_address, setup, setup_with_args, ALLOWANCE_AMOUNT_1, ALLOWANCE_AMOUNT_2,
+        setup, setup_with_args, ALLOWANCE_AMOUNT_1, ALLOWANCE_AMOUNT_2,
         TOKEN_DECIMALS, TOKEN_NAME, TOKEN_SYMBOL, TOKEN_TOTAL_SUPPLY, TRANSFER_AMOUNT_1,
     };
     use crate::stablecoin::{StablecoinHostRef, StablecoinInitArgs};
@@ -35,12 +35,6 @@ mod allowance_tests {
         assert_eq!(
             stablecoin.allowance(&owner, &spender),
             amount.add(U256::one())
-        );
-        let inverted_owner = invert_address(owner);
-        let inverted_spender = invert_address(spender);
-        assert_eq!(
-            stablecoin.allowance(&inverted_owner, &inverted_spender),
-            U256::zero()
         );
     }
 

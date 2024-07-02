@@ -1,4 +1,5 @@
-use core::fmt::Error;
+use odra::casper_types::bytesrepr::FromBytes;
+use odra::casper_types::ContractPackageHash;
 use odra::casper_types::U256;
 use odra::prelude::*;
 use odra::Address;
@@ -12,6 +13,7 @@ pub mod errors;
 pub mod events;
 pub mod storage;
 mod tests;
+
 
 #[odra::module]
 pub struct MessageTransmitter {
@@ -49,7 +51,14 @@ impl MessageTransmitter {
     pub fn send_message_with_caller(&self) {
         todo!("Format a message and emit and event");
     }
-    pub fn receive_message(&self) {
+    pub fn receive_message(&self, data: &Vec<u8>) {
+        // todo: check if paused
+        let message: Message = Message{
+            data
+        };
+
+
+        //let recipient: Address = Address::Contract(ContractPackageHash::from_bytes().unwrap().0);
         // todo: verify attestation signatures
         // todo: check if the signature threshold is met
         // todo: call token_messenger_minter::handle_receive_message
@@ -85,10 +94,10 @@ impl MessageTransmitter {
     pub fn get_nonce_pda(&self) {
         todo!("Implement");
     }
-    pub fn enable_attester(&self){
+    pub fn enable_attester(&self) {
         todo!("Implement");
     }
-    pub fn disable_attester(&self){
+    pub fn disable_attester(&self) {
         todo!("Implement")
     }
 }
@@ -107,7 +116,9 @@ impl<'a> Message<'a> {
     const DESTINATION_CALLER_INDEX: usize = 84;
     const MESSAGE_BODY_INDEX: usize = 116;
 
-    pub fn new(message_bytes: &'a [u8]) -> Self {
+    pub fn new(expected_version: u32, message_bytes: &'a [u8]) -> Self {
+        //todo: check message bytes size is >= MESSAGE_BODY_INDEX
+        //todo: check message version against local
         Message {
             data: &message_bytes,
         }
@@ -120,12 +131,14 @@ impl<'a> Message<'a> {
         destination_domain: u32,
         nonce: u64,
         sender: &Pubkey,
-        recipient: &Pubkey,
+        // know this is a contract
+        recipient: &ContractPackageHash,
         // [0;32] if the destination caller can be any
+        // assume this is an account
         destination_caller: &Pubkey,
         message_body: &Vec<u8>,
     ) -> Vec<u8> {
-        let mut output: Vec<u8> = Vec::new();
+        let mut output: Vec<u8> = vec![0;Self::MESSAGE_BODY_INDEX+message_body.len()];
         output[Self::VERSION_INDEX..Self::SOURCE_DOMAIN_INDEX]
             .copy_from_slice(&version.to_be_bytes());
         output[Self::SOURCE_DOMAIN_INDEX..Self::DESTINATION_DOMAIN_INDEX]
@@ -151,37 +164,37 @@ impl<'a> Message<'a> {
 
     /// Returns version field
     pub fn version(&self) -> u32 {
-        self.read_u32(Self::VERSION_INDEX).unwrap()
+        self.read_u32(Self::VERSION_INDEX)
     }
 
     /// Returns sender field
-    pub fn sender(&self) -> Pubkey {
-        self.read_pubkey(Self::SENDER_INDEX).unwrap()
+    pub fn sender(&self) -> ContractPackageHash {
+        self.read_contract_package_hash(Self::SENDER_INDEX)
     }
 
     /// Returns recipient field
-    pub fn recipient(&self) -> Pubkey {
-        self.read_pubkey(Self::RECIPIENT_INDEX).unwrap()
+    pub fn recipient(&self) -> ContractPackageHash {
+        self.read_contract_package_hash(Self::RECIPIENT_INDEX)
     }
 
     /// Returns source_domain field
     pub fn source_domain(&self) -> u32 {
-        self.read_u32(Self::SOURCE_DOMAIN_INDEX).unwrap()
+        self.read_u32(Self::SOURCE_DOMAIN_INDEX)
     }
 
     /// Returns destination_domain field
     pub fn destination_domain(&self) -> u32 {
-        self.read_u32(Self::DESTINATION_DOMAIN_INDEX).unwrap()
+        self.read_u32(Self::DESTINATION_DOMAIN_INDEX)
     }
 
     /// Returns destination_caller field
-    pub fn destination_caller(&self) -> Pubkey {
-        self.read_pubkey(Self::DESTINATION_CALLER_INDEX).unwrap()
+    pub fn destination_caller(&self) -> ContractPackageHash {
+        self.read_contract_package_hash(Self::DESTINATION_CALLER_INDEX)
     }
 
     /// Returns nonce field
     pub fn nonce(&self) -> u64 {
-        self.read_u64(Self::NONCE_INDEX).unwrap()
+        self.read_u64(Self::NONCE_INDEX)
     }
 
     /// Returns message_body field
@@ -189,124 +202,23 @@ impl<'a> Message<'a> {
         &self.data[Self::MESSAGE_BODY_INDEX..]
     }
 
-    fn read_u32(&self, index: usize) -> Result<u32, Error> {
-        Ok(u32::from_be_bytes(
+    fn read_u32(&self, index: usize) -> u32 {
+        u32::from_be_bytes(
             // u32 size is 32 bits = 4 bytes
             self.data[index..(index + 4)].try_into().unwrap(),
-        ))
+        )
     }
 
-    fn read_u64(&self, index: usize) -> Result<u64, Error> {
-        Ok(u64::from_be_bytes(
+    fn read_u64(&self, index: usize) -> u64 {
+        u64::from_be_bytes(
             // 64 size is 64 bits = 8 bytes
             self.data[index..(index + 8)].try_into().unwrap(),
-        ))
+        )
     }
 
     /// Reads pubkey field at the given offset
-    fn read_pubkey(&self, index: usize) -> Result<Pubkey, Error> {
-        Ok(Pubkey::try_from(
-            // Pubkey size is 32 bytes
-            &self.data[index..(index + 32)],
-        )
-        .unwrap())
-    }
-}
-
-pub struct BurnMessage<'a> {
-    data: &'a [u8],
-}
-
-impl<'a> BurnMessage<'a> {
-    // Indices of each field in the message
-    const VERSION_INDEX: usize = 0;
-    const BURN_TOKEN_INDEX: usize = 4;
-    const MINT_RECIPIENT_INDEX: usize = 36;
-    const AMOUNT_INDEX: usize = 68;
-    const MSG_SENDER_INDEX: usize = 100;
-    // 4 byte version + 32 bytes burnToken + 32 bytes mintRecipient + 32 bytes amount + 32 bytes messageSender
-    const BURN_MESSAGE_LEN: usize = 132;
-    // EVM amount is 32 bytes while we use only 8 bytes on Solana
-    const AMOUNT_OFFSET: usize = 24;
-
-    /// Validates source array size and returns a new message
-    pub fn new(message_bytes: &'a [u8]) -> Self {
-        Self {
-            data: &message_bytes,
-        }
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    /// Serializes given fields into a burn message
-    pub fn format_message(
-        version: u32,
-        burn_token: &Pubkey,
-        mint_recipient: &Pubkey,
-        amount: u64,
-        message_sender: &Pubkey,
-    ) -> Vec<u8> {
-        let mut output: Vec<u8> = Vec::new();
-
-        output[Self::VERSION_INDEX..Self::BURN_TOKEN_INDEX].copy_from_slice(&version.to_be_bytes());
-        output[Self::BURN_TOKEN_INDEX..Self::MINT_RECIPIENT_INDEX]
-            .copy_from_slice(burn_token.as_ref());
-        output[Self::MINT_RECIPIENT_INDEX..Self::AMOUNT_INDEX]
-            .copy_from_slice(mint_recipient.as_ref());
-        output[(Self::AMOUNT_INDEX + Self::AMOUNT_OFFSET)..Self::MSG_SENDER_INDEX]
-            .copy_from_slice(&amount.to_be_bytes());
-        output[Self::MSG_SENDER_INDEX..Self::BURN_MESSAGE_LEN]
-            .copy_from_slice(message_sender.as_ref());
-
-        output
-    }
-
-    /// Returns version field
-    pub fn version(&self) -> u32 {
-        self.read_u32(Self::VERSION_INDEX).unwrap()
-    }
-
-    /// Returns burn_token field
-    pub fn burn_token(&self) -> Pubkey {
-        self.read_pubkey(Self::BURN_TOKEN_INDEX).unwrap()
-    }
-
-    /// Returns mint_recipient field
-    pub fn mint_recipient(&self) -> Pubkey {
-        self.read_pubkey(Self::MINT_RECIPIENT_INDEX).unwrap()
-    }
-
-    /// Returns amount field
-    pub fn amount(&self) -> u64 {
-        self.read_u64(Self::AMOUNT_INDEX + Self::AMOUNT_OFFSET)
-            .unwrap()
-    }
-
-    /// Returns message_sender field
-    pub fn message_sender(&self) -> Pubkey {
-        self.read_pubkey(Self::MSG_SENDER_INDEX).unwrap()
-    }
-
-    fn read_u32(&self, index: usize) -> Result<u32, Error> {
-        Ok(u32::from_be_bytes(
-            // u32 size is 32 bits = 4 bytes
-            self.data[index..(index + 4)].try_into().unwrap(),
-        ))
-    }
-
-    fn read_u64(&self, index: usize) -> Result<u64, Error> {
-        Ok(u64::from_be_bytes(
-            // 64 size is 64 bits = 8 bytes
-            self.data[index..(index + 8)].try_into().unwrap(),
-        ))
-    }
-
-    /// Reads pubkey field at the given offset
-    fn read_pubkey(&self, index: usize) -> Result<Pubkey, Error> {
-        Ok(Pubkey::try_from(
-            // Pubkey size is 32 bytes
-            &self.data[index..(index + 32)],
-        )
-        .unwrap())
+    fn read_contract_package_hash(&self, index: usize) -> ContractPackageHash {
+        ContractPackageHash::from_bytes(&self.data[index..(index + 32)]).unwrap().0
     }
 }
 

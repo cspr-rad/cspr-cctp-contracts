@@ -4,14 +4,14 @@ use alloc::{vec, vec::Vec};
 use odra::casper_types::ContractPackageHash;
 
 pub struct BurnMessage<'a> {
-    data: &'a [u8],
+    pub data: &'a [u8],
 }
 
 impl<'a> BurnMessage<'a> {
     // Indices of each field in the message
     const VERSION_INDEX: usize = 0;
     const BURN_TOKEN_INDEX: usize = 4;
-    const MINT_pubkey_INDEX: usize = 36;
+    const MINT_RECIPIENT_INDEX: usize = 36;
     const AMOUNT_INDEX: usize = 68;
     const MSG_SENDER_INDEX: usize = 100;
     // 4 byte version + 32 bytes burnToken + 32 bytes mintpubkey + 32 bytes amount + 32 bytes messageSender
@@ -39,9 +39,9 @@ impl<'a> BurnMessage<'a> {
     ) -> Vec<u8> {
         let mut output: Vec<u8> = vec![0; Self::BURN_MESSAGE_LEN];
         output[Self::VERSION_INDEX..Self::BURN_TOKEN_INDEX].copy_from_slice(&version.to_be_bytes());
-        output[Self::BURN_TOKEN_INDEX..Self::MINT_pubkey_INDEX]
+        output[Self::BURN_TOKEN_INDEX..Self::MINT_RECIPIENT_INDEX]
             .copy_from_slice(burn_token.as_ref());
-        output[Self::MINT_pubkey_INDEX..Self::AMOUNT_INDEX]
+        output[Self::MINT_RECIPIENT_INDEX..Self::AMOUNT_INDEX]
             .copy_from_slice(mint_recipient.as_ref());
         output[(Self::AMOUNT_INDEX + Self::AMOUNT_OFFSET)..Self::MSG_SENDER_INDEX]
             .copy_from_slice(&amount.to_be_bytes());
@@ -62,8 +62,8 @@ impl<'a> BurnMessage<'a> {
     }
 
     /// Returns mint_pubkey field
-    pub fn mint_pubkey(&self) -> Pubkey {
-        self.read_pubkey(Self::MINT_pubkey_INDEX)
+    pub fn mint_recipient(&self) -> Pubkey {
+        self.read_pubkey(Self::MINT_RECIPIENT_INDEX)
     }
 
     /// Returns amount field

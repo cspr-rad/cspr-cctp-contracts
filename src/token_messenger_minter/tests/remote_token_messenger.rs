@@ -5,7 +5,7 @@ mod install_message_transmitter {
     #[test]
     fn test_set_remote_token_messenger() {
         let (_env, mut token_messenger_minter) = setup();
-        token_messenger_minter.add_remote_token_messenger([0; 32]);
-        token_messenger_minter.remove_remote_token_messenger([0; 32]);
+        token_messenger_minter.add_remote_token_messenger(31u32, [0; 32]);
+        token_messenger_minter.remove_remote_token_messenger(31u32, [0; 32]);
     }
 }

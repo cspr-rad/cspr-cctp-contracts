@@ -28,16 +28,6 @@ impl TokenMessengerMinter {
             .set(local_message_transmitter);
         self.owner.set(owner);
     }
-    /* Ascii art is temporary
-
-    ███╗   ███╗███████╗███████╗███████╗███████╗███╗   ██╗ ██████╗ ███████╗██████╗
-    ████╗ ████║██╔════╝██╔════╝██╔════╝██╔════╝████╗  ██║██╔════╝ ██╔════╝██╔══██╗
-    ██╔████╔██║█████╗  ███████╗███████╗█████╗  ██╔██╗ ██║██║  ███╗█████╗  ██████╔╝
-    ██║╚██╔╝██║██╔══╝  ╚════██║╚════██║██╔══╝  ██║╚██╗██║██║   ██║██╔══╝  ██╔══██╗
-    ██║ ╚═╝ ██║███████╗███████║███████║███████╗██║ ╚████║╚██████╔╝███████╗██║  ██║
-    ╚═╝     ╚═╝╚══════╝╚══════╝╚══════╝╚══════╝╚═╝  ╚═══╝ ╚═════╝ ╚══════╝╚═╝  ╚═╝
-
-    */
 
     pub fn deposit_for_burn(&self) {
         // this entry point may be called by a user
@@ -74,18 +64,7 @@ impl TokenMessengerMinter {
             .remove_remote_token_messenger(remote_token_messenger);
     }
 
-    /* Ascii art is temporary
-
-    ███╗   ███╗██╗███╗   ██╗████████╗███████╗██████╗
-    ████╗ ████║██║████╗  ██║╚══██╔══╝██╔════╝██╔══██╗
-    ██╔████╔██║██║██╔██╗ ██║   ██║   █████╗  ██████╔╝
-    ██║╚██╔╝██║██║██║╚██╗██║   ██║   ██╔══╝  ██╔══██╗
-    ██║ ╚═╝ ██║██║██║ ╚████║   ██║   ███████╗██║  ██║
-    ╚═╝     ╚═╝╚═╝╚═╝  ╚═══╝   ╚═╝   ╚══════╝╚═╝  ╚═╝
-
-    */
-
-    pub fn link_token_pair(&self, local_token: Address, remote_domain: u32, remote_token: Pubkey) {}
+    pub fn link_token_pair(&self) {}
     pub fn unlink_token_pair(&self) {}
     pub fn pause(&self) {}
     pub fn unpause(&self) {}

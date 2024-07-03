@@ -51,6 +51,7 @@ impl MessageTransmitter {
         self.pending_owner.set(None);
     }
     pub fn send_message(&self, destination_domain: u32, recipient: Pubkey, message_body: &Vec<u8>) {
+        self.require_not_paused();
         let empty_destination_caller: [u8; 32] = [0u8; 32];
         let nonce: u64 = self.next_available_nonce.get().unwrap();
         let message_sender: GenericAddress = generic_address(self.env().caller());
@@ -72,6 +73,7 @@ impl MessageTransmitter {
         message_body: &Vec<u8>,
         destination_caller: Pubkey,
     ) {
+        self.require_not_paused();
         let nonce: u64 = self.next_available_nonce.get().unwrap();
         let message_sender: GenericAddress = generic_address(self.env().caller());
         self._send_message(
@@ -86,7 +88,7 @@ impl MessageTransmitter {
         );
     }
     pub fn receive_message(&self, data: &Vec<u8>, attestations: &Vec<u8>) {
-        // todo: check if paused
+        self.require_not_paused();
         let message: Message = Message { data };
         //let recipient: Address = Address::Contract(ContractPackageHash::from_bytes().unwrap().0);
         // todo: verify attestation signatures
@@ -98,6 +100,7 @@ impl MessageTransmitter {
         todo!("Implement");
     }
     pub fn replace_message(&self) {
+        self.require_not_paused();
         todo!("Implement");
     }
     pub fn set_max_message_body_size(&mut self, new_max_message_body_size: U256) {
@@ -141,6 +144,11 @@ impl MessageTransmitter {
     pub fn disable_attester(&mut self, attester: Pubkey) {
         self.require_owner();
         self.attesters.disable_attester(attester);
+    }
+    fn require_not_paused(&self){
+        if self.paused.get().unwrap() == true{
+            todo!("Throw a meaningful error")
+        }
     }
     fn require_owner(&self) {
         if self.env().caller() != self.owner.get().unwrap() {

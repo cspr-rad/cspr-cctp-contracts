@@ -7,6 +7,8 @@ use odra::SubModule;
 use odra::Var;
 use storage::UsedNonces;
 
+use crate::generic_address;
+use crate::GenericAddress;
 use crate::Pubkey;
 
 pub mod errors;
@@ -19,11 +21,13 @@ mod tests;
 pub struct MessageTransmitter {
     local_domain: Var<u32>,
     version: Var<u32>,
+    paused: Var<bool>,
     max_message_body_size: Var<U256>,
     next_available_nonce: Var<u64>,
     used_nonces: SubModule<UsedNonces>,
-    attestation_threshold: Var<u32>,
+    signature_threshold: Var<u32>,
     owner: Var<Address>,
+    pending_owner: Var<Option<Address>>
 }
 
 #[odra::module]
@@ -35,29 +39,32 @@ impl MessageTransmitter {
         version: u32,
         max_message_body_size: U256,
         next_available_nonce: u64,
-        attestation_threshold: u32,
+        signature_threshold: u32,
         owner: Address,
     ) {
         self.local_domain.set(local_domain);
         self.version.set(version);
+        self.paused.set(false);
         self.max_message_body_size.set(max_message_body_size);
         self.next_available_nonce.set(next_available_nonce);
-        self.attestation_threshold.set(attestation_threshold);
+        self.signature_threshold.set(signature_threshold);
         self.owner.set(owner);
+        self.pending_owner.set(None);
     }
-    pub fn send_message(&self) {
-        todo!("Format a message and emit an event");
+    pub fn send_message(&self, destination_domain: u32, recipient: Pubkey, message_body: &Vec<u8>) {
+        let empty_destination_caller: [u8;32] = [0u8;32];
+        let nonce: u64 = self.next_available_nonce.get().unwrap();
+        let message_sender: GenericAddress = generic_address(self.env().caller());
+        self._send_message(self.version.get().unwrap(), self.local_domain.get().unwrap(), destination_domain, recipient, empty_destination_caller, message_sender, nonce, message_body);
     }
     pub fn send_message_with_caller(&self) {
         todo!("Format a message and emit and event");
     }
-    pub fn receive_message(&self, data: &Vec<u8>) {
+    pub fn receive_message(&self, data: &Vec<u8>, attestations: &Vec<u8>) {
         // todo: check if paused
         let message: Message = Message{
             data
         };
-
-
         //let recipient: Address = Address::Contract(ContractPackageHash::from_bytes().unwrap().0);
         // todo: verify attestation signatures
         // todo: check if the signature threshold is met
@@ -71,25 +78,35 @@ impl MessageTransmitter {
         todo!("Implement");
     }
     pub fn set_max_message_body_size(&self) {
+        self.require_owner();
         todo!("Implement");
     }
-    pub fn set_signature_threshold(&self) {
-        todo!("Implement");
+    pub fn set_signature_threshold(&mut self, new_signature_threshold: u32) {
+        self.require_owner();
+        self.signature_threshold.set(new_signature_threshold);
     }
-    pub fn transfer_ownership(&self) {
-        todo!("Implement");
+    pub fn transfer_ownership(&mut self, new_pending_owner: Address) {
+        self.require_owner();
+        self.pending_owner.set(Some(new_pending_owner));
     }
-    pub fn accept_ownership(&self) {
-        todo!("Implement");
+    pub fn accept_ownership(&mut self) {
+        let pending_owner = self.pending_owner.get().unwrap().unwrap();
+        if self.env().caller() != pending_owner{
+            todo!("Throw a meaningful error")
+        }
+        self.owner.set(pending_owner);
+        self.pending_owner.set(None);
     }
-    pub fn pause(&self) {
-        todo!("Pause the transmitter");
+    pub fn pause(&mut self) {
+        self.require_owner();
+        self.paused.set(true);
     }
-    pub fn unpause(&self) {
-        todo!("Unpause the transmitter");
+    pub fn unpause(&mut self) {
+        self.require_owner();
+        self.paused.set(false);
     }
-    pub fn is_nonce_used(&self) -> bool {
-        todo!("Implement");
+    pub fn is_nonce_used(&self, nonce: u64) -> bool {
+        self.used_nonces.is_used_nonce(nonce)
     }
     pub fn get_nonce_pda(&self) {
         todo!("Implement");
@@ -99,6 +116,20 @@ impl MessageTransmitter {
     }
     pub fn disable_attester(&self) {
         todo!("Implement")
+    }
+    fn require_owner(&self){
+        if self.env().caller() != self.owner.get().unwrap(){
+            todo!("Throw a meaningful error")
+        }
+    }
+    fn _send_message(&self, version: u32, local_domain: u32, destination_domain: u32, recipient: Pubkey, destination_caller: Pubkey, sender: GenericAddress, nonce: u64, message_body: &Vec<u8> ){
+        assert_ne!(recipient, [0u8;32]);
+        // Validate message body length
+        assert!(U256::from(message_body.len()) <= self.max_message_body_size.get().unwrap());
+        let message: Message = Message{
+            data: &Message::format_message(version, local_domain, destination_domain, nonce, &sender, &recipient, &destination_caller, message_body)
+        };
+        // Todo: Emit the constructed Message as an Event
     }
 }
 
@@ -125,14 +156,13 @@ impl<'a> Message<'a> {
     }
 
     pub fn format_message(
-        &self,
         version: u32,
         local_domain: u32,
         destination_domain: u32,
         nonce: u64,
         sender: &Pubkey,
         // know this is a contract
-        recipient: &ContractPackageHash,
+        recipient: &GenericAddress,
         // [0;32] if the destination caller can be any
         // assume this is an account
         destination_caller: &Pubkey,
@@ -168,13 +198,13 @@ impl<'a> Message<'a> {
     }
 
     /// Returns sender field
-    pub fn sender(&self) -> ContractPackageHash {
-        self.read_contract_package_hash(Self::SENDER_INDEX)
+    pub fn sender(&self) -> GenericAddress {
+        self.read_generic_address(Self::SENDER_INDEX)
     }
 
     /// Returns recipient field
-    pub fn recipient(&self) -> ContractPackageHash {
-        self.read_contract_package_hash(Self::RECIPIENT_INDEX)
+    pub fn recipient(&self) -> GenericAddress {
+        self.read_generic_address(Self::RECIPIENT_INDEX)
     }
 
     /// Returns source_domain field
@@ -188,8 +218,8 @@ impl<'a> Message<'a> {
     }
 
     /// Returns destination_caller field
-    pub fn destination_caller(&self) -> ContractPackageHash {
-        self.read_contract_package_hash(Self::DESTINATION_CALLER_INDEX)
+    pub fn destination_caller(&self) -> GenericAddress {
+        self.read_generic_address(Self::DESTINATION_CALLER_INDEX)
     }
 
     /// Returns nonce field
@@ -217,8 +247,8 @@ impl<'a> Message<'a> {
     }
 
     /// Reads pubkey field at the given offset
-    fn read_contract_package_hash(&self, index: usize) -> ContractPackageHash {
-        ContractPackageHash::from_bytes(&self.data[index..(index + 32)]).unwrap().0
+    fn read_generic_address(&self, index: usize) -> GenericAddress {
+        self.data[index..(index + 32)].try_into().unwrap()
     }
 }
 
@@ -234,7 +264,7 @@ pub(crate) mod setup_tests {
             version: 1u32,
             max_message_body_size: 1_000_000_000.into(), // unreasonably high for development
             next_available_nonce: 1,                     // start from nonce = 1
-            attestation_threshold: 1,                    // default: 1
+            signature_threshold: 1,                    // default: 1
             owner: env.get_account(0),                   // default account as owner
         };
         let message_transmitter = setup_with_args(&env, args);

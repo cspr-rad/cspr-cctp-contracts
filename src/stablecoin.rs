@@ -25,8 +25,8 @@ use crate::stablecoin::storage::{
     StablecoinSymbolStorage, StablecoinTotalSupplyStorage,
 };
 use crate::stablecoin::utils::StablecoinModality;
+use crate::{generic_address, GenericAddress};
 
-type GenericAddress = [u8;32];
 /// CEP-18 token module
 #[odra::module(events = [Mint, Burn, SetAllowance, IncreaseAllowance, DecreaseAllowance, Transfer, TransferFrom])]
 pub struct Stablecoin {
@@ -472,12 +472,6 @@ impl Stablecoin {
             self.env().revert(Error::MintBurnDisabled);
         }
     }
-}
-
-fn generic_address(address: Address) -> GenericAddress{
-    let mut address_bytes = address.to_bytes().unwrap();
-    address_bytes.remove(0);
-    address_bytes.try_into().unwrap()
 }
 
 #[cfg(test)]

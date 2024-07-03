@@ -21,6 +21,7 @@ pub struct TokenMessengerMinter {
     local_message_transmitter: Var<Address>,
     remote_token_messengers: SubModule<RemoteTokenMessengers>,
     owner: Var<Address>,
+    pending_owner: Var<Option<Address>>
 }
 
 #[odra::module]
@@ -31,6 +32,7 @@ impl TokenMessengerMinter {
         self.local_message_transmitter
             .set(local_message_transmitter);
         self.owner.set(owner);
+        self.pending_owner.set(None);
     }
 
     pub fn deposit_for_burn(&self, amount: u64, destination_domain: u32, mint_recipient: Pubkey) {
@@ -54,12 +56,17 @@ impl TokenMessengerMinter {
         // todo: find local minter for the token
         // and mint amount to mint_recipient
     }
-
-    pub fn transfer_ownership(&self) {
-        todo!("Implement");
+    pub fn transfer_ownership(&mut self, new_pending_owner: Address) {
+        self.require_owner();
+        self.pending_owner.set(Some(new_pending_owner));
     }
-    pub fn accept_ownership(&self) {
-        todo!("Implement");
+    pub fn accept_ownership(&mut self) {
+        let pending_owner = self.pending_owner.get().unwrap().unwrap();
+        if self.env().caller() != pending_owner {
+            todo!("Throw a meaningful error")
+        }
+        self.owner.set(pending_owner);
+        self.pending_owner.set(None);
     }
     pub fn add_remote_token_messenger(&mut self, domain: u32, remote_token_messenger: Pubkey) {
         self.require_owner();

@@ -83,14 +83,17 @@ impl Stablecoin {
         }
 
         for owner in owner_list {
-            self.roles.configure_role(&Roles::Owner, &generic_address(owner));
+            self.roles
+                .configure_role(&Roles::Owner, &generic_address(owner));
         }
 
         for pauser in pauser_list {
-            self.roles.configure_role(&Roles::Pauser, &generic_address(pauser));
+            self.roles
+                .configure_role(&Roles::Pauser, &generic_address(pauser));
         }
 
-        self.roles.configure_role(&Roles::Blacklister, &generic_address(blacklister));
+        self.roles
+            .configure_role(&Roles::Blacklister, &generic_address(blacklister));
 
         // set the modality
         if let Some(modality) = modality {
@@ -125,7 +128,8 @@ impl Stablecoin {
 
     /// Returns the amount of tokens the owner has allowed the spender to spend.
     pub fn allowance(&self, owner: &Address, spender: &Address) -> U256 {
-        self.allowances.get_or_default(&generic_address(*owner), &generic_address(*spender))
+        self.allowances
+            .get_or_default(&generic_address(*owner), &generic_address(*spender))
     }
 
     /// Approves the spender to spend the given amount of tokens on behalf of the caller.
@@ -138,7 +142,8 @@ impl Stablecoin {
             self.env().revert(Error::CannotTargetSelfUser);
         }
 
-        self.allowances.set(&generic_address(owner), &generic_address(*spender), *amount);
+        self.allowances
+            .set(&generic_address(owner), &generic_address(*spender), *amount);
         self.env().emit_event(SetAllowance {
             owner: generic_address(owner),
             spender: generic_address(*spender),
@@ -150,8 +155,11 @@ impl Stablecoin {
     pub fn decrease_allowance(&mut self, spender: &Address, decr_by: &U256) {
         let owner = self.env().caller();
         let allowance = self.allowance(&owner, spender);
-        self.allowances
-            .set(&generic_address(owner), &generic_address(*spender), allowance.saturating_sub(*decr_by));
+        self.allowances.set(
+            &generic_address(owner),
+            &generic_address(*spender),
+            allowance.saturating_sub(*decr_by),
+        );
         self.env().emit_event(DecreaseAllowance {
             owner: generic_address(owner),
             spender: generic_address(*spender),
@@ -166,10 +174,15 @@ impl Stablecoin {
         if owner == *spender {
             self.env().revert(Error::CannotTargetSelfUser);
         }
-        let allowance = self.allowances.get_or_default(&generic_address(owner), &generic_address(*spender));
+        let allowance = self
+            .allowances
+            .get_or_default(&generic_address(owner), &generic_address(*spender));
 
-        self.allowances
-            .set(&generic_address(owner), &generic_address(*spender), allowance.saturating_add(*inc_by));
+        self.allowances.set(
+            &generic_address(owner),
+            &generic_address(*spender),
+            allowance.saturating_add(*inc_by),
+        );
         self.env().emit_event(IncreaseAllowance {
             owner: generic_address(owner),
             spender: generic_address(*spender),
@@ -231,11 +244,14 @@ impl Stablecoin {
         self.require_role(&self.caller(), &Roles::Minter);
         self.require_not_role(owner, &Roles::Blacklisted);
         self.assert_burn_and_mint_enabled();
-        let minter_allowance: U256 = self.minter_allowances.get_or_default(&generic_address(*&self.caller()));
+        let minter_allowance: U256 = self
+            .minter_allowances
+            .get_or_default(&generic_address(*&self.caller()));
         if &minter_allowance < &amount {
             self.env().revert(Error::InsufficientMinterAllowance);
         }
-        self.minter_allowances.subtract(&generic_address(*&self.caller()), amount);
+        self.minter_allowances
+            .subtract(&generic_address(*&self.caller()), amount);
         self.raw_mint(owner, &amount);
     }
 
@@ -258,15 +274,21 @@ impl Stablecoin {
     /// Blacklist an account
     pub fn blacklist(&mut self, account: &Address) {
         self.require_role(&self.caller(), &Roles::Blacklister);
-        self.roles.configure_role(&Roles::Blacklisted, &generic_address(*account));
-        self.env().emit_event(Blacklist { account: generic_address(*account) });
+        self.roles
+            .configure_role(&Roles::Blacklisted, &generic_address(*account));
+        self.env().emit_event(Blacklist {
+            account: generic_address(*account),
+        });
     }
 
     /// Remove an account from the Blacklist
     pub fn unblacklist(&mut self, account: &Address) {
         self.require_role(&self.caller(), &Roles::Blacklister);
-        self.roles.revoke_role(&Roles::Blacklisted, &generic_address(*account));
-        self.env().emit_event(Unblacklist { account: generic_address(*account) });
+        self.roles
+            .revoke_role(&Roles::Blacklisted, &generic_address(*account));
+        self.env().emit_event(Unblacklist {
+            account: generic_address(*account),
+        });
     }
 
     /// Update the Blacklister, can only be called by Owner
@@ -274,11 +296,13 @@ impl Stablecoin {
         self.require_role(&self.caller(), &Roles::Owner);
         self.roles.revoke_role(
             &Roles::Blacklister,
-            &generic_address(*&self
-                .blacklister
-                .get()
-                // borrow checker is unhappy if we unwrap_or_revert() here.
-                .unwrap()),
+            &generic_address(
+                *&self
+                    .blacklister
+                    .get()
+                    // borrow checker is unhappy if we unwrap_or_revert() here.
+                    .unwrap(),
+            ),
         );
         self.roles
             .configure_role(&Roles::Blacklister, &generic_address(*new_blacklister));
@@ -295,7 +319,8 @@ impl Stablecoin {
         self.require_role(&self.caller(), &Roles::Controller);
         let minter = self.get_associated_minter(&self.caller());
         self.require_not_role(&minter, &Roles::Blacklisted);
-        self.minter_allowances.set(&generic_address(minter), minter_allowance);
+        self.minter_allowances
+            .set(&generic_address(minter), minter_allowance);
         self.env().emit_event(MinterConfigured {
             minter: generic_address(minter),
             minter_allowance,
@@ -307,7 +332,8 @@ impl Stablecoin {
         self.require_role(&self.caller(), &Roles::Controller);
         let minter = self.get_associated_minter(&self.caller());
         self.require_not_role(&minter, &Roles::Blacklisted);
-        self.minter_allowances.add(&generic_address(minter), increment);
+        self.minter_allowances
+            .add(&generic_address(minter), increment);
         self.env().emit_event(MinterConfigured {
             minter: generic_address(minter),
             minter_allowance: self.minter_allowance(&minter),
@@ -319,7 +345,8 @@ impl Stablecoin {
         self.require_role(&self.caller(), &Roles::Controller);
         let minter = self.get_associated_minter(&self.caller());
         self.require_not_role(&minter, &Roles::Blacklisted);
-        self.minter_allowances.subtract(&generic_address(minter), decrement);
+        self.minter_allowances
+            .subtract(&generic_address(minter), decrement);
         self.env().emit_event(MinterConfigured {
             minter: generic_address(minter),
             minter_allowance: self.minter_allowance(&minter),
@@ -331,8 +358,10 @@ impl Stablecoin {
         self.require_role(&self.caller(), &Roles::MasterMinter);
         self.require_not_role(controller, &Roles::Blacklisted);
         self.require_not_role(minter, &Roles::Blacklisted);
-        self.roles.configure_role(&Roles::Controller, &generic_address(*controller));
-        self.roles.configure_role(&Roles::Minter, &generic_address(*minter));
+        self.roles
+            .configure_role(&Roles::Controller, &generic_address(*controller));
+        self.roles
+            .configure_role(&Roles::Minter, &generic_address(*minter));
         self.controllers.set(&controller, *minter);
         self.env().emit_event(ControllerConfigured {
             controller: generic_address(*controller),
@@ -343,7 +372,8 @@ impl Stablecoin {
     /// Remove a controller
     pub fn remove_controller(&mut self, controller: &Address) {
         self.require_role(&self.caller(), &Roles::MasterMinter);
-        self.roles.revoke_role(&Roles::Controller, &generic_address(*controller));
+        self.roles
+            .revoke_role(&Roles::Controller, &generic_address(*controller));
         self.env().emit_event(ControllerRemoved {
             controller: generic_address(*controller),
         });
@@ -354,8 +384,11 @@ impl Stablecoin {
         self.require_role(&self.caller(), &Roles::Controller);
         self.require_not_role(&self.caller(), &Roles::Blacklisted);
         let minter: Address = self.get_associated_minter(&self.env().caller());
-        self.roles.revoke_role(&Roles::Minter, &generic_address(minter));
-        self.env().emit_event(MinterRemoved { minter: generic_address(minter) })
+        self.roles
+            .revoke_role(&Roles::Minter, &generic_address(minter));
+        self.env().emit_event(MinterRemoved {
+            minter: generic_address(minter),
+        })
     }
 
     // Queries start here
@@ -389,7 +422,8 @@ impl Stablecoin {
 
     /// Query the allowance of a minter
     pub fn minter_allowance(&self, minter: &Address) -> U256 {
-        self.minter_allowances.get_or_default(&generic_address(*minter))
+        self.minter_allowances
+            .get_or_default(&generic_address(*minter))
     }
 
     fn require_unpaused(&self) {

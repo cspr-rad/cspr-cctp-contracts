@@ -1,10 +1,9 @@
-use odra::casper_types::bytesrepr::FromBytes;
-use odra::casper_types::ContractPackageHash;
 use odra::casper_types::U256;
 use odra::prelude::*;
 use odra::Address;
 use odra::SubModule;
 use odra::Var;
+use storage::Attesters;
 use storage::UsedNonces;
 
 use crate::generic_address;
@@ -16,7 +15,6 @@ pub mod events;
 pub mod storage;
 mod tests;
 
-
 #[odra::module]
 pub struct MessageTransmitter {
     local_domain: Var<u32>,
@@ -25,9 +23,10 @@ pub struct MessageTransmitter {
     max_message_body_size: Var<U256>,
     next_available_nonce: Var<u64>,
     used_nonces: SubModule<UsedNonces>,
+    attesters: SubModule<Attesters>,
     signature_threshold: Var<u32>,
     owner: Var<Address>,
-    pending_owner: Var<Option<Address>>
+    pending_owner: Var<Option<Address>>,
 }
 
 #[odra::module]
@@ -52,19 +51,43 @@ impl MessageTransmitter {
         self.pending_owner.set(None);
     }
     pub fn send_message(&self, destination_domain: u32, recipient: Pubkey, message_body: &Vec<u8>) {
-        let empty_destination_caller: [u8;32] = [0u8;32];
+        let empty_destination_caller: [u8; 32] = [0u8; 32];
         let nonce: u64 = self.next_available_nonce.get().unwrap();
         let message_sender: GenericAddress = generic_address(self.env().caller());
-        self._send_message(self.version.get().unwrap(), self.local_domain.get().unwrap(), destination_domain, recipient, empty_destination_caller, message_sender, nonce, message_body);
+        self._send_message(
+            self.version.get().unwrap(),
+            self.local_domain.get().unwrap(),
+            destination_domain,
+            recipient,
+            empty_destination_caller,
+            message_sender,
+            nonce,
+            message_body,
+        );
     }
-    pub fn send_message_with_caller(&self) {
-        todo!("Format a message and emit and event");
+    pub fn send_message_with_caller(
+        &self,
+        destination_domain: u32,
+        recipient: Pubkey,
+        message_body: &Vec<u8>,
+        destination_caller: Pubkey,
+    ) {
+        let nonce: u64 = self.next_available_nonce.get().unwrap();
+        let message_sender: GenericAddress = generic_address(self.env().caller());
+        self._send_message(
+            self.version.get().unwrap(),
+            self.local_domain.get().unwrap(),
+            destination_domain,
+            recipient,
+            destination_caller,
+            message_sender,
+            nonce,
+            message_body,
+        );
     }
     pub fn receive_message(&self, data: &Vec<u8>, attestations: &Vec<u8>) {
         // todo: check if paused
-        let message: Message = Message{
-            data
-        };
+        let message: Message = Message { data };
         //let recipient: Address = Address::Contract(ContractPackageHash::from_bytes().unwrap().0);
         // todo: verify attestation signatures
         // todo: check if the signature threshold is met
@@ -77,9 +100,9 @@ impl MessageTransmitter {
     pub fn replace_message(&self) {
         todo!("Implement");
     }
-    pub fn set_max_message_body_size(&self) {
+    pub fn set_max_message_body_size(&mut self, new_max_message_body_size: U256) {
         self.require_owner();
-        todo!("Implement");
+        self.max_message_body_size.set(new_max_message_body_size);
     }
     pub fn set_signature_threshold(&mut self, new_signature_threshold: u32) {
         self.require_owner();
@@ -91,7 +114,7 @@ impl MessageTransmitter {
     }
     pub fn accept_ownership(&mut self) {
         let pending_owner = self.pending_owner.get().unwrap().unwrap();
-        if self.env().caller() != pending_owner{
+        if self.env().caller() != pending_owner {
             todo!("Throw a meaningful error")
         }
         self.owner.set(pending_owner);
@@ -111,23 +134,44 @@ impl MessageTransmitter {
     pub fn get_nonce_pda(&self) {
         todo!("Implement");
     }
-    pub fn enable_attester(&self) {
-        todo!("Implement");
+    pub fn enable_attester(&mut self, new_attester: Pubkey) {
+        self.require_owner();
+        self.attesters.enable_attester(new_attester);
     }
-    pub fn disable_attester(&self) {
-        todo!("Implement")
+    pub fn disable_attester(&mut self, attester: Pubkey) {
+        self.require_owner();
+        self.attesters.disable_attester(attester);
     }
-    fn require_owner(&self){
-        if self.env().caller() != self.owner.get().unwrap(){
+    fn require_owner(&self) {
+        if self.env().caller() != self.owner.get().unwrap() {
             todo!("Throw a meaningful error")
         }
     }
-    fn _send_message(&self, version: u32, local_domain: u32, destination_domain: u32, recipient: Pubkey, destination_caller: Pubkey, sender: GenericAddress, nonce: u64, message_body: &Vec<u8> ){
-        assert_ne!(recipient, [0u8;32]);
+    fn _send_message(
+        &self,
+        version: u32,
+        local_domain: u32,
+        destination_domain: u32,
+        recipient: Pubkey,
+        destination_caller: Pubkey,
+        sender: GenericAddress,
+        nonce: u64,
+        message_body: &Vec<u8>,
+    ) {
+        assert_ne!(recipient, [0u8; 32]);
         // Validate message body length
         assert!(U256::from(message_body.len()) <= self.max_message_body_size.get().unwrap());
-        let message: Message = Message{
-            data: &Message::format_message(version, local_domain, destination_domain, nonce, &sender, &recipient, &destination_caller, message_body)
+        let message: Message = Message {
+            data: &Message::format_message(
+                version,
+                local_domain,
+                destination_domain,
+                nonce,
+                &sender,
+                &recipient,
+                &destination_caller,
+                message_body,
+            ),
         };
         // Todo: Emit the constructed Message as an Event
     }
@@ -168,7 +212,7 @@ impl<'a> Message<'a> {
         destination_caller: &Pubkey,
         message_body: &Vec<u8>,
     ) -> Vec<u8> {
-        let mut output: Vec<u8> = vec![0;Self::MESSAGE_BODY_INDEX+message_body.len()];
+        let mut output: Vec<u8> = vec![0; Self::MESSAGE_BODY_INDEX + message_body.len()];
         output[Self::VERSION_INDEX..Self::SOURCE_DOMAIN_INDEX]
             .copy_from_slice(&version.to_be_bytes());
         output[Self::SOURCE_DOMAIN_INDEX..Self::DESTINATION_DOMAIN_INDEX]
@@ -264,7 +308,7 @@ pub(crate) mod setup_tests {
             version: 1u32,
             max_message_body_size: 1_000_000_000.into(), // unreasonably high for development
             next_available_nonce: 1,                     // start from nonce = 1
-            signature_threshold: 1,                    // default: 1
+            signature_threshold: 1,                      // default: 1
             owner: env.get_account(0),                   // default account as owner
         };
         let message_transmitter = setup_with_args(&env, args);

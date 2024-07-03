@@ -3,8 +3,8 @@ use odra::casper_types::U256;
 use odra::ExecutionError::AdditionOverflow;
 
 use odra::casper_types::bytesrepr::ToBytes;
-use odra::{prelude::*, Mapping};
 use odra::UnwrapOrRevert;
+use odra::{prelude::*, Mapping};
 
 use crate::stablecoin::errors::Error::{InvalidState, Overflow};
 
@@ -19,7 +19,7 @@ const DECIMALS_KEY: &str = "decimals";
 const SYMBOL_KEY: &str = "symbol";
 const TOTAL_SUPPLY_KEY: &str = "total_supply";
 
-type GenericAddress = [u8;32];
+type GenericAddress = [u8; 32];
 
 #[odra::module]
 /// Storage module for the name of the token.

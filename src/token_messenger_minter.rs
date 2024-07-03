@@ -5,10 +5,10 @@ use odra::Var;
 
 use crate::Pubkey;
 
+mod burn_message;
 pub mod errors;
 pub mod events;
 pub mod storage;
-mod burn_message;
 mod tests;
 
 use storage::RemoteTokenMessengers;

@@ -1,7 +1,7 @@
 extern crate alloc;
-use alloc::{vec::Vec, vec};
-use odra::casper_types::ContractPackageHash;
 use crate::Pubkey;
+use alloc::{vec, vec::Vec};
+use odra::casper_types::ContractPackageHash;
 
 pub struct BurnMessage<'a> {
     data: &'a [u8],
@@ -37,7 +37,7 @@ impl<'a> BurnMessage<'a> {
         // throw away the byte
         message_sender: &Pubkey,
     ) -> Vec<u8> {
-        let mut output: Vec<u8> = vec![0;Self::BURN_MESSAGE_LEN];
+        let mut output: Vec<u8> = vec![0; Self::BURN_MESSAGE_LEN];
         output[Self::VERSION_INDEX..Self::BURN_TOKEN_INDEX].copy_from_slice(&version.to_be_bytes());
         output[Self::BURN_TOKEN_INDEX..Self::MINT_pubkey_INDEX]
             .copy_from_slice(burn_token.as_ref());
@@ -69,7 +69,6 @@ impl<'a> BurnMessage<'a> {
     /// Returns amount field
     pub fn amount(&self) -> u64 {
         self.read_u64(Self::AMOUNT_INDEX + Self::AMOUNT_OFFSET)
-            
     }
 
     /// Returns message_sender field

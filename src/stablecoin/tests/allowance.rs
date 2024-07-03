@@ -3,8 +3,8 @@ mod allowance_tests {
     use crate::stablecoin::cross_contract_test::StablecoinClientContractHostRef;
     use crate::stablecoin::errors::Error::InsufficientAllowance;
     use crate::stablecoin::setup_tests::{
-        setup, setup_with_args, ALLOWANCE_AMOUNT_1, ALLOWANCE_AMOUNT_2,
-        TOKEN_DECIMALS, TOKEN_NAME, TOKEN_SYMBOL, TOKEN_TOTAL_SUPPLY, TRANSFER_AMOUNT_1,
+        setup, setup_with_args, ALLOWANCE_AMOUNT_1, ALLOWANCE_AMOUNT_2, TOKEN_DECIMALS, TOKEN_NAME,
+        TOKEN_SYMBOL, TOKEN_TOTAL_SUPPLY, TRANSFER_AMOUNT_1,
     };
     use crate::stablecoin::{StablecoinHostRef, StablecoinInitArgs};
     use core::ops::Add;

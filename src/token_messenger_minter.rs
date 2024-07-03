@@ -1,4 +1,7 @@
 use burn_message::BurnMessage;
+use odra::casper_types::bytesrepr::FromBytes;
+use odra::casper_types::ContractHash;
+use odra::casper_types::PublicKey;
 use odra::prelude::*;
 use odra::Address;
 use odra::SubModule;
@@ -18,10 +21,11 @@ use storage::RemoteTokenMessengers;
 #[odra::module]
 pub struct TokenMessengerMinter {
     version: Var<u32>,
+    paused: Var<bool>,
     local_message_transmitter: Var<Address>,
     remote_token_messengers: SubModule<RemoteTokenMessengers>,
     owner: Var<Address>,
-    pending_owner: Var<Option<Address>>
+    pending_owner: Var<Option<Address>>,
 }
 
 #[odra::module]
@@ -29,24 +33,28 @@ impl TokenMessengerMinter {
     #[allow(clippy::too_many_arguments)]
     pub fn init(&mut self, version: u32, local_message_transmitter: Address, owner: Address) {
         self.version.set(version);
+        self.paused.set(false);
         self.local_message_transmitter
             .set(local_message_transmitter);
         self.owner.set(owner);
         self.pending_owner.set(None);
     }
 
-    pub fn deposit_for_burn(&self, amount: u64, destination_domain: u32, mint_recipient: Pubkey) {
-
-    }
+    pub fn deposit_for_burn(&self, amount: u64, destination_domain: u32, mint_recipient: Pubkey) {}
 
     pub fn deposit_for_burn_with_caller(&self) {}
 
     pub fn replace_deposit_for_burn(&self) {}
 
-    pub fn handle_receive_message(&self, remote_domain: u32, sender: Pubkey, message_body: &Vec<u8>) {
+    pub fn handle_receive_message(
+        &self,
+        remote_domain: u32,
+        sender: Pubkey,
+        message_body: &Vec<u8>,
+    ) {
         // todo: validate burn message format
-        let burn_message: BurnMessage = BurnMessage{
-            data: &message_body
+        let burn_message: BurnMessage = BurnMessage {
+            data: &message_body,
         };
         assert_eq!(self.version.get().unwrap(), burn_message.version());
         let mint_recipient: GenericAddress = burn_message.mint_recipient();
@@ -54,7 +62,7 @@ impl TokenMessengerMinter {
         let amount: u64 = burn_message.amount();
 
         // todo: find local minter for the token
-        // and mint amount to mint_recipient
+        self.mint(remote_domain, burn_token, mint_recipient);
     }
     pub fn transfer_ownership(&mut self, new_pending_owner: Address) {
         self.require_owner();
@@ -79,26 +87,45 @@ impl TokenMessengerMinter {
             .remove_remote_token_messenger(domain, remote_token_messenger);
     }
 
-    fn send_deposit_for_burn_message(destination_domain: u32, destination_token_messenger: Pubkey, destination_caller: Pubkey, burn_message: &Vec<u8>){
-        todo!(r#"
-            Send message either to local_transmitter::send_message
-            or local_transmitter::send_message_with_caller
-        "#)
-    }
-
-    fn mint_and_withdraw(){
-
-    }
-
     pub fn link_token_pair(&self) {}
     pub fn unlink_token_pair(&self) {}
-    pub fn pause(&self) {}
-    pub fn unpause(&self) {}
+    pub fn pause(&mut self) {
+        self.require_owner();
+        self.paused.set(true);
+    }
+    pub fn unpause(&mut self) {
+        self.require_owner();
+        self.paused.set(false);
+    }
     pub fn set_max_burn_amount_per_message(&self) {}
+    // Mint get_local_token(burn_token) on the Casper domain
+    fn mint(&self, source_domain: u32, burn_token: Pubkey, to: GenericAddress) {
+        self.require_not_paused();
+        // todo: get local_token from burn_token
+        // todo: cross-contract call to mint local_token
+    }
+    fn burn(&self) {
+        self.require_not_paused();
+    }
+    fn require_not_paused(&self) {
+        if self.paused.get().unwrap() == true {
+            todo!("Throw a meaningful error")
+        }
+    }
     fn require_owner(&self) {
         if self.env().caller() != self.owner.get().unwrap() {
             todo!("Throw a meaningful error")
         }
+    }
+    fn generic_address_to_account_address(generic_address: GenericAddress) -> Address {
+        let mut address_bytes: [u8; 33] = [0; 33];
+        address_bytes[1..].copy_from_slice(&generic_address);
+        Address::from(PublicKey::from_bytes(&address_bytes).unwrap().0)
+    }
+    fn generic_address_to_contract_address(generic_address: GenericAddress) -> Address {
+        let mut address_bytes: [u8; 33] = [1; 33];
+        address_bytes[1..].copy_from_slice(&generic_address);
+        Address::from(PublicKey::from_bytes(&address_bytes).unwrap().0)
     }
 }
 

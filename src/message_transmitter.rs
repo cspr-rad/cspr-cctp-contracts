@@ -145,8 +145,8 @@ impl MessageTransmitter {
         self.require_owner();
         self.attesters.disable_attester(attester);
     }
-    fn require_not_paused(&self){
-        if self.paused.get().unwrap() == true{
+    fn require_not_paused(&self) {
+        if self.paused.get().unwrap() == true {
             todo!("Throw a meaningful error")
         }
     }

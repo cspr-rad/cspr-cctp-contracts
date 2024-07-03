@@ -15,7 +15,13 @@ impl RemoteTokenMessengers {
     pub fn remove_remote_token_messenger(&mut self, domain: u32, remote_token_messenger: Pubkey) {
         self.roles.set(&(domain, remote_token_messenger), false);
     }
-    pub fn is_remote_token_messenger(&mut self, domain: u32, remote_token_messenger: Pubkey) -> bool {
-        self.roles.get(&(domain, remote_token_messenger)).unwrap_or_default()
+    pub fn is_remote_token_messenger(
+        &mut self,
+        domain: u32,
+        remote_token_messenger: Pubkey,
+    ) -> bool {
+        self.roles
+            .get(&(domain, remote_token_messenger))
+            .unwrap_or_default()
     }
 }

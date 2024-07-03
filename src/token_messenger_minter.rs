@@ -40,7 +40,9 @@ impl TokenMessengerMinter {
         self.pending_owner.set(None);
     }
 
-    pub fn deposit_for_burn(&self, amount: u64, destination_domain: u32, mint_recipient: Pubkey) {}
+    pub fn deposit_for_burn(&self, amount: u64, destination_domain: u32, mint_recipient: Pubkey) {
+        //_deposit_for_burn();
+    }
 
     pub fn deposit_for_burn_with_caller(&self) {}
 
@@ -62,6 +64,7 @@ impl TokenMessengerMinter {
         let amount: u64 = burn_message.amount();
 
         // todo: find local minter for the token
+        todo!("Finish mint function");
         self.mint(remote_domain, burn_token, mint_recipient);
     }
     pub fn transfer_ownership(&mut self, new_pending_owner: Address) {
@@ -107,6 +110,14 @@ impl TokenMessengerMinter {
     fn burn(&self) {
         self.require_not_paused();
     }
+    fn _deposit_for_burn(&self, amount: u64, destination_domain: u32, mint_recipient: Pubkey) {
+        assert_eq!(amount, 0u64);
+        assert_eq!(mint_recipient, [0u8; 32]);
+        todo!("Finish burn function");
+        self.burn();
+        //let burn_message = BurnMessage::format_message(self.version.get().unwrap(), burn_token, &mint_recipient, amount, message_sender);
+    }
+
     fn require_not_paused(&self) {
         if self.paused.get().unwrap() == true {
             todo!("Throw a meaningful error")

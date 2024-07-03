@@ -90,13 +90,6 @@ impl MessageTransmitter {
     pub fn receive_message(&self, data: &Vec<u8>, attestations: &Vec<u8>) {
         self.require_not_paused();
         let message: Message = Message { data };
-        //let recipient: Address = Address::Contract(ContractPackageHash::from_bytes().unwrap().0);
-        // todo: verify attestation signatures
-        // todo: check if the signature threshold is met
-        // todo: call token_messenger_minter::handle_receive_message
-
-        // check that the nonce has not been used yet
-        // mark the nonce as used
         todo!("Implement");
     }
     pub fn replace_message(&self) {

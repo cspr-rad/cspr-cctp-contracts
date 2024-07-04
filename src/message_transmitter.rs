@@ -147,10 +147,11 @@ impl MessageTransmitter {
         self.require_owner();
         self.paused.set(false);
     }
+    // the purpose of this function is currently unclear
     pub fn get_nonce_pda(&self) {
         todo!("Implement");
     }
-    pub fn is_used_nonce(&self, nonce: u64, account: GenericAddress) -> bool{
+    pub fn is_used_nonce(&self, nonce: u64, account: GenericAddress) -> bool {
         let nonce_hashed = hash_nonce(nonce, account);
         self.used_nonces.is_used_nonce(nonce, nonce_hashed)
     }

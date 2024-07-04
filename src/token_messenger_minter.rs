@@ -2,13 +2,16 @@ use burn_message::BurnMessage;
 use odra::casper_types::bytesrepr::FromBytes;
 use odra::casper_types::ContractHash;
 use odra::casper_types::PublicKey;
+use odra::casper_types::U256;
 use odra::prelude::*;
 use odra::Address;
+use odra::Mapping;
 use odra::SubModule;
 use odra::UnwrapOrRevert;
 use odra::Var;
 
 use crate::generic_address;
+use crate::generic_address_to_contract_address;
 use crate::GenericAddress;
 use crate::Pubkey;
 
@@ -19,6 +22,7 @@ pub mod storage;
 mod tests;
 
 use crate::message_transmitter::MessageTransmitterContractRef;
+use crate::stablecoin::StablecoinContractRef;
 use storage::RemoteTokenMessengers;
 
 #[odra::module]
@@ -43,11 +47,39 @@ impl TokenMessengerMinter {
         self.pending_owner.set(None);
     }
 
-    pub fn deposit_for_burn(&self, amount: u64, destination_domain: u32, mint_recipient: Pubkey) {
-        //_deposit_for_burn();
+    pub fn deposit_for_burn(
+        &self,
+        amount: u64,
+        destination_domain: u32,
+        mint_recipient: Pubkey,
+        burn_token: GenericAddress,
+    ) {
+        let destination_caller: Pubkey = [0u8; 32];
+        self._deposit_for_burn(
+            amount,
+            destination_domain,
+            mint_recipient,
+            burn_token,
+            destination_caller,
+        );
     }
 
-    pub fn deposit_for_burn_with_caller(&self) {}
+    pub fn deposit_for_burn_with_caller(
+        &self,
+        amount: u64,
+        destination_domain: u32,
+        mint_recipient: Pubkey,
+        burn_token: GenericAddress,
+        destination_caller: Pubkey,
+    ) {
+        self._deposit_for_burn(
+            amount,
+            destination_domain,
+            mint_recipient,
+            burn_token,
+            destination_caller,
+        );
+    }
 
     pub fn replace_deposit_for_burn(&self) {}
 
@@ -66,7 +98,6 @@ impl TokenMessengerMinter {
         let burn_token: Pubkey = burn_message.burn_token();
         let amount: u64 = burn_message.amount();
 
-        // todo: find local minter for the token
         todo!("Finish mint function");
         self.mint(remote_domain, burn_token, mint_recipient);
     }
@@ -110,26 +141,31 @@ impl TokenMessengerMinter {
         // todo: get local_token from burn_token
         // todo: cross-contract call to mint local_token
     }
-    fn burn(&self) {
+    fn burn(&self, burn_token: Address, burn_amount: U256) {
         self.require_not_paused();
+        let mut stable_coin_contract = StablecoinContractRef::new(self.env(), burn_token);
+        // burn Stablecoin from MessengerMinter allowance
+        stable_coin_contract.burn(burn_amount);
     }
     fn _deposit_for_burn(
         &self,
-        amount: u64,
+        burn_amount: u64,
         destination_domain: u32,
         mint_recipient: Pubkey,
         burn_token: GenericAddress,
         destination_caller: Pubkey,
     ) {
-        assert_eq!(amount, 0u64);
+        assert_eq!(burn_amount, 0u64);
         assert_eq!(mint_recipient, [0u8; 32]);
-        todo!("Finish burn function");
-        self.burn();
+        self.burn(
+            generic_address_to_contract_address(burn_token),
+            U256::from(burn_amount),
+        );
         let burn_message: Vec<u8> = BurnMessage::format_message(
             self.version.get().unwrap(),
             &burn_token,
             &mint_recipient,
-            amount,
+            burn_amount,
             &generic_address(self.env().caller()),
         );
         let destination_token_messenger: Pubkey = self

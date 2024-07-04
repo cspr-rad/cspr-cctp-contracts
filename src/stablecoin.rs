@@ -1,5 +1,4 @@
 //! CEP-18 Casper Fungible Token standard implementation.
-use odra::casper_types::bytesrepr::ToBytes;
 use odra::prelude::*;
 use odra::{casper_types::U256, Address, Mapping, SubModule, UnwrapOrRevert, Var};
 
@@ -25,7 +24,7 @@ use crate::stablecoin::storage::{
     StablecoinSymbolStorage, StablecoinTotalSupplyStorage,
 };
 use crate::stablecoin::utils::StablecoinModality;
-use crate::{generic_address, GenericAddress};
+use crate::generic_address;
 
 /// CEP-18 token module
 #[odra::module(events = [Mint, Burn, SetAllowance, IncreaseAllowance, DecreaseAllowance, Transfer, TransferFrom])]

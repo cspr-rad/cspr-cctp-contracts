@@ -1,7 +1,6 @@
 extern crate alloc;
 use crate::{GenericAddress, Pubkey};
 use alloc::{vec, vec::Vec};
-use odra::casper_types::ContractPackageHash;
 
 pub struct BurnMessage<'a> {
     pub data: &'a [u8],
@@ -21,6 +20,7 @@ impl<'a> BurnMessage<'a> {
 
     /// Validates source array size and returns a new message
     pub fn new(message_bytes: &'a [u8]) -> Self {
+        // todo: validate source array
         Self {
             data: &message_bytes,
         }

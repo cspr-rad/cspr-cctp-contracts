@@ -1,8 +1,7 @@
 use crate::stablecoin::storage::Roles::Role;
+use crate::GenericAddress;
 use odra::casper_types::U256;
 use odra::prelude::*;
-
-type GenericAddress = [u8; 32];
 
 /// An event emitted when a mint operation is performed.
 #[odra::event]

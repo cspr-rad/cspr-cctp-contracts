@@ -95,6 +95,7 @@ impl MessageTransmitter {
     }
     pub fn receive_message(&mut self, data: &Vec<u8>, attestations: &Vec<u8>) {
         self.require_not_paused();
+        // todo: verify attestations and check that the threshold is met
         let message: Message = Message { data };
         assert_eq!(message.version(), self.version.get().unwrap());
         let token_messenger_minter_contract: TokenMessengerMinterContractRef =
@@ -147,7 +148,6 @@ impl MessageTransmitter {
         self.require_owner();
         self.paused.set(false);
     }
-    // the purpose of this function is currently unclear
     pub fn get_nonce_pda(&self) {
         todo!("Implement");
     }

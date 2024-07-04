@@ -1,12 +1,15 @@
 use burn_message::BurnMessage;
+use events::DepositForBurn;
 use odra::casper_types::U256;
 use odra::prelude::*;
 use odra::Address;
+use odra::Mapping;
 use odra::SubModule;
 use odra::UnwrapOrRevert;
 use odra::Var;
 
 use crate::generic_address;
+use crate::generic_address_to_account_address;
 use crate::generic_address_to_contract_address;
 use crate::GenericAddress;
 use crate::Pubkey;
@@ -29,6 +32,7 @@ pub struct TokenMessengerMinter {
     remote_token_messengers: SubModule<RemoteTokenMessengers>,
     owner: Var<Address>,
     pending_owner: Var<Option<Address>>,
+    linked_token_pairs: Mapping<Pubkey, Option<Address>>,
 }
 
 #[odra::module]
@@ -77,7 +81,16 @@ impl TokenMessengerMinter {
         );
     }
 
-    pub fn replace_deposit_for_burn(&self) {}
+    pub fn replace_deposit_for_burn(
+        &self,
+        original_message: &Vec<u8>,
+        original_attestation: &Vec<u8>,
+        new_destination_caller: Pubkey,
+        new_mint_recipient: Pubkey,
+    ) {
+        todo!("Send to new DepositForBurn to Message Transmitter");
+        // emit event
+    }
 
     pub fn handle_receive_message(
         &self,
@@ -94,9 +107,7 @@ impl TokenMessengerMinter {
         let mint_recipient: GenericAddress = burn_message.mint_recipient();
         let burn_token: Pubkey = burn_message.burn_token();
         let amount: u64 = burn_message.amount();
-
-        todo!("Finish mint function");
-        self.mint(remote_domain, burn_token, mint_recipient);
+        self.mint(remote_domain, burn_token, mint_recipient, amount);
     }
     pub fn transfer_ownership(&mut self, new_pending_owner: Address) {
         self.require_owner();
@@ -121,8 +132,15 @@ impl TokenMessengerMinter {
             .remove_remote_token_messenger(domain);
     }
 
-    pub fn link_token_pair(&self) {}
-    pub fn unlink_token_pair(&self) {}
+    pub fn link_token_pair(&mut self, local_token: Address, remote_token: Pubkey) {
+        self.require_owner();
+        self.linked_token_pairs
+            .set(&remote_token, Some(local_token));
+    }
+    pub fn unlink_token_pair(&mut self, remote_token: Pubkey) {
+        self.require_owner();
+        self.linked_token_pairs.set(&remote_token, None);
+    }
     pub fn pause(&mut self) {
         self.require_owner();
         self.paused.set(true);
@@ -133,15 +151,24 @@ impl TokenMessengerMinter {
     }
     pub fn set_max_burn_amount_per_message(&self) {}
     // Mint get_local_token(burn_token) on the Casper domain
-    fn mint(&self, source_domain: u32, burn_token: Pubkey, to: GenericAddress) {
+    fn mint(&self, source_domain: u32, burn_token: Pubkey, to: GenericAddress, amount: u64) {
         self.require_not_paused();
-        // todo: get local_token from burn_token
-        // todo: cross-contract call to mint local_token
+        let local_token: Address = self
+            .linked_token_pairs
+            .get(&burn_token)
+            .unwrap_or_revert(&self.env())
+            .unwrap();
+        let mut stable_coin_contract: StablecoinContractRef =
+            StablecoinContractRef::new(self.env(), local_token);
+        // This will work for both Address::Account and Address::ContractHash, since the first byte is dropped by the accounting
+        // logic of the stablecoin.
+        stable_coin_contract.mint(&generic_address_to_account_address(to), U256::from(amount));
+        // todo: emit event
     }
     fn burn(&self, burn_token: Address, burn_amount: U256) {
         self.require_not_paused();
-        let mut stable_coin_contract = StablecoinContractRef::new(self.env(), burn_token);
-        // burn Stablecoin from MessengerMinter allowance
+        let mut stable_coin_contract: StablecoinContractRef =
+            StablecoinContractRef::new(self.env(), burn_token);
         stable_coin_contract.burn(burn_amount, self.env().caller());
     }
     fn _deposit_for_burn(
@@ -174,7 +201,18 @@ impl TokenMessengerMinter {
             destination_token_messenger,
             destination_caller,
             &burn_message,
-        )
+        );
+        self.env().emit_event(DepositForBurn{
+            // todo: adjust nonce logic to get next available nonce from transmitter
+            nonce: 0u64,
+            burn_token,
+            amount: U256::from(burn_amount),
+            depositor: generic_address(self.env().caller()),
+            mint_recipient,
+            destination_domain,
+            destination_token_messenger,
+            destination_caller
+        })
     }
 
     fn _send_deposit_for_burn_message(
@@ -205,7 +243,7 @@ impl TokenMessengerMinter {
                 destination_caller,
             );
         }
-        // todo: emit event
+        // todo: emit MintAndWithdraw event
     }
 
     fn require_not_paused(&self) {
@@ -218,7 +256,7 @@ impl TokenMessengerMinter {
             todo!("Throw a meaningful error")
         }
     }
-    fn require_local_message_transmitter(&self){
+    fn require_local_message_transmitter(&self) {
         if self.env().caller() != self.local_message_transmitter.get().unwrap() {
             todo!("Throw a meaningful error")
         }

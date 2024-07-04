@@ -102,8 +102,10 @@ impl MessageTransmitter {
                 self.env(),
                 generic_address_to_contract_address(message.recipient()),
             );
-        let nonce = message.nonce();
-        let sender = message.sender();
+        let nonce: u64 = message.nonce();
+        let sender: [u8; 32] = message.sender();
+        let hashed_nonce: [u8; 32] = hash_nonce(nonce, sender);
+        assert_eq!(self.used_nonces.is_used_nonce(nonce, hashed_nonce), false);
         self.used_nonces.use_nonce(nonce, hash_nonce(nonce, sender));
 
         token_messenger_minter_contract.handle_receive_message(

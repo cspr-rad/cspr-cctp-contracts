@@ -172,6 +172,7 @@ impl TokenMessengerMinter {
                 destination_caller,
             );
         }
+        // todo: emit event
     }
 
     fn require_not_paused(&self) {
@@ -183,16 +184,6 @@ impl TokenMessengerMinter {
         if self.env().caller() != self.owner.get().unwrap() {
             todo!("Throw a meaningful error")
         }
-    }
-    fn generic_address_to_account_address(generic_address: GenericAddress) -> Address {
-        let mut address_bytes: [u8; 33] = [0; 33];
-        address_bytes[1..].copy_from_slice(&generic_address);
-        Address::from(PublicKey::from_bytes(&address_bytes).unwrap().0)
-    }
-    fn generic_address_to_contract_address(generic_address: GenericAddress) -> Address {
-        let mut address_bytes: [u8; 33] = [1; 33];
-        address_bytes[1..].copy_from_slice(&generic_address);
-        Address::from(PublicKey::from_bytes(&address_bytes).unwrap().0)
     }
 }
 

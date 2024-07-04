@@ -1,3 +1,4 @@
+use odra::casper_types::bytesrepr::ToBytes;
 use odra::casper_types::U256;
 use odra::prelude::*;
 use odra::Address;
@@ -5,8 +6,10 @@ use odra::SubModule;
 use odra::Var;
 use storage::Attesters;
 use storage::UsedNonces;
+use tiny_keccak::Hasher;
 
 use crate::generic_address;
+use crate::generic_address_to_contract_address;
 use crate::GenericAddress;
 use crate::Pubkey;
 
@@ -14,6 +17,9 @@ pub mod errors;
 pub mod events;
 pub mod storage;
 mod tests;
+
+use crate::token_messenger_minter::TokenMessengerMinterContractRef;
+use tiny_keccak::Keccak;
 
 #[odra::module]
 pub struct MessageTransmitter {
@@ -87,10 +93,25 @@ impl MessageTransmitter {
             message_body,
         );
     }
-    pub fn receive_message(&self, data: &Vec<u8>, attestations: &Vec<u8>) {
+    pub fn receive_message(&mut self, data: &Vec<u8>, attestations: &Vec<u8>) {
         self.require_not_paused();
         let message: Message = Message { data };
-        todo!("Implement");
+        assert_eq!(message.version(), self.version.get().unwrap());
+        let token_messenger_minter_contract: TokenMessengerMinterContractRef =
+            TokenMessengerMinterContractRef::new(
+                self.env(),
+                generic_address_to_contract_address(message.recipient()),
+            );
+        let nonce = message.nonce();
+        let sender = message.sender();
+        self.used_nonces.use_nonce(nonce, hash_nonce(nonce, sender));
+
+        token_messenger_minter_contract.handle_receive_message(
+            message.source_domain(),
+            message.sender(),
+            &message.message_body().to_vec(),
+        );
+        // emit a message received event
     }
     pub fn replace_message(&self) {
         self.require_not_paused();
@@ -123,9 +144,6 @@ impl MessageTransmitter {
     pub fn unpause(&mut self) {
         self.require_owner();
         self.paused.set(false);
-    }
-    pub fn is_nonce_used(&self, nonce: u64) -> bool {
-        self.used_nonces.is_used_nonce(nonce)
     }
     pub fn get_nonce_pda(&self) {
         todo!("Implement");
@@ -176,6 +194,14 @@ impl MessageTransmitter {
         };
         // Todo: Emit the constructed Message as an Event
     }
+}
+fn hash_nonce(nonce: u64, account: GenericAddress) -> [u8; 32] {
+    let mut hasher = Keccak::v384();
+    let mut output = [0u8; 32];
+    hasher.update(&nonce.to_bytes().unwrap());
+    hasher.update(&account);
+    hasher.finalize(&mut output);
+    output
 }
 
 pub struct Message<'a> {
@@ -233,8 +259,12 @@ impl<'a> Message<'a> {
     }
 
     /// Returns Keccak hash of the message
-    pub fn hash(&self) {
-        todo!("Add keccak hasher for bytes");
+    pub fn hash(&self) -> [u8; 32] {
+        let mut hasher = Keccak::v384();
+        let mut output = [0u8; 32];
+        hasher.update(&self.data);
+        hasher.finalize(&mut output);
+        output
     }
 
     /// Returns version field

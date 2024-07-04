@@ -150,6 +150,10 @@ impl MessageTransmitter {
     pub fn get_nonce_pda(&self) {
         todo!("Implement");
     }
+    pub fn is_used_nonce(&self, nonce: u64, account: GenericAddress) -> bool{
+        let nonce_hashed = hash_nonce(nonce, account);
+        self.used_nonces.is_used_nonce(nonce, nonce_hashed)
+    }
     pub fn enable_attester(&mut self, new_attester: Pubkey) {
         self.require_owner();
         self.attesters.enable_attester(new_attester);

@@ -64,8 +64,6 @@ impl MessageTransmitter {
         let nonce: u64 = self.next_available_nonce.get().unwrap();
         let message_sender: GenericAddress = generic_address(self.env().caller());
         self._send_message(
-            self.version.get().unwrap(),
-            self.local_domain.get().unwrap(),
             destination_domain,
             recipient,
             empty_destination_caller,
@@ -85,14 +83,44 @@ impl MessageTransmitter {
         let nonce: u64 = self.next_available_nonce.get().unwrap();
         let message_sender: GenericAddress = generic_address(self.env().caller());
         self._send_message(
-            self.version.get().unwrap(),
-            self.local_domain.get().unwrap(),
             destination_domain,
             recipient,
             destination_caller,
             message_sender,
             nonce,
             message_body,
+        );
+    }
+    pub fn replace_message(
+        &self,
+        original_message: &Vec<u8>,
+        original_attestation: &Vec<u8>,
+        new_message_body: &Vec<u8>,
+        new_destination_caller: Pubkey,
+    ) {
+        // todo: verify attestation signatures
+        // todo: validate message format
+        let original_msg = Message {
+            data: &original_message,
+        };
+        let sender = original_msg.sender();
+        // Message must be replaced by the Transmitter that submitted the original message.
+        assert_eq!(generic_address(self.env().caller()), sender);
+        assert_eq!(
+            original_msg.source_domain(),
+            self.local_domain.get().unwrap()
+        );
+        let destination_domain: u32 = original_msg.destination_domain();
+        let recipient = original_msg.recipient();
+        let nonce = original_msg.nonce();
+
+        self._send_message(
+            destination_domain,
+            recipient,
+            new_destination_caller,
+            sender,
+            nonce,
+            new_message_body,
         );
     }
     pub fn receive_message(&mut self, data: &Vec<u8>, attestations: &Vec<u8>) {
@@ -110,7 +138,7 @@ impl MessageTransmitter {
         let hashed_nonce: [u8; 32] = hash_nonce(nonce, sender);
         let source_domain: u32 = message.source_domain();
         let sender: [u8; 32] = message.sender();
-        let message_body = message.message_body();
+        let message_body: &[u8] = message.message_body();
 
         assert_eq!(self.used_nonces.is_used_nonce(nonce, hashed_nonce), false);
         self.used_nonces.use_nonce(nonce, hash_nonce(nonce, sender));
@@ -127,10 +155,6 @@ impl MessageTransmitter {
             sender,
             message_body: message_body.to_vec(),
         })
-    }
-    pub fn replace_message(&self) {
-        self.require_not_paused();
-        todo!("Implement");
     }
     pub fn set_max_message_body_size(&mut self, new_max_message_body_size: U256) {
         self.require_owner();
@@ -187,8 +211,6 @@ impl MessageTransmitter {
     }
     fn _send_message(
         &self,
-        version: u32,
-        local_domain: u32,
         destination_domain: u32,
         recipient: Pubkey,
         destination_caller: Pubkey,
@@ -201,8 +223,8 @@ impl MessageTransmitter {
         assert!(U256::from(message_body.len()) <= self.max_message_body_size.get().unwrap());
         let message: Message = Message {
             data: &Message::format_message(
-                version,
-                local_domain,
+                self.version.get().unwrap(),
+                self.local_domain.get().unwrap(),
                 destination_domain,
                 nonce,
                 &sender,
@@ -226,7 +248,7 @@ fn hash_nonce(nonce: u64, account: GenericAddress) -> [u8; 32] {
 }
 
 pub struct Message<'a> {
-    data: &'a [u8],
+    pub data: &'a [u8],
 }
 
 impl<'a> Message<'a> {

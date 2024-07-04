@@ -16,6 +16,7 @@ use odra::Var;
 use crate::generic_address;
 use crate::generic_address_to_account_address;
 use crate::generic_address_to_contract_address;
+use crate::message_transmitter::Message;
 use crate::GenericAddress;
 use crate::Pubkey;
 
@@ -93,8 +94,41 @@ impl TokenMessengerMinter {
         new_destination_caller: Pubkey,
         new_mint_recipient: Pubkey,
     ) {
-        todo!("Send to new DepositForBurn to Message Transmitter");
-        // emit event
+        // todo: validate message format
+        // todo: validate message body format
+        let original_msg: Message = Message {
+            data: &original_message,
+        };
+        let original_burn_msg: BurnMessage = BurnMessage {
+            data: original_msg.message_body(),
+        };
+        let burn_token: [u8; 32] = original_burn_msg.burn_token();
+        let amount: u64 = original_burn_msg.amount();
+        let sender: [u8; 32] = original_burn_msg.message_sender();
+        let version: u32 = original_burn_msg.version();
+        let new_burn_message_body: Vec<u8> =
+            BurnMessage::format_message(version, &burn_token, &new_mint_recipient, amount, &sender);
+        let local_message_transmitter: MessageTransmitterContractRef =
+            MessageTransmitterContractRef::new(
+                self.env(),
+                self.local_message_transmitter.get().unwrap(),
+            );
+        local_message_transmitter.replace_message(
+            original_message,
+            original_attestation,
+            &new_burn_message_body,
+            new_destination_caller,
+        );
+        self.env().emit_event(DepositForBurn {
+            nonce: original_msg.nonce(),
+            burn_token,
+            amount: U256::from(amount),
+            depositor: generic_address(self.env().caller()),
+            mint_recipient: new_mint_recipient,
+            destination_domain: original_msg.destination_domain(),
+            destination_caller: new_destination_caller,
+            destination_token_messenger: original_msg.recipient(),
+        })
     }
 
     pub fn handle_receive_message(

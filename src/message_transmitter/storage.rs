@@ -1,6 +1,5 @@
-use crate::{GenericAddress, Pubkey};
-use odra::{casper_types::ApiError, prelude::*, Mapping, Var};
-use tiny_keccak::Keccak;
+use crate::Pubkey;
+use odra::{prelude::*, Mapping, Var};
 
 #[odra::module()]
 /// Storage module for the allowances of the token.

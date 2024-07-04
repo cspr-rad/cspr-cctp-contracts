@@ -5,8 +5,10 @@ use odra::casper_types::PublicKey;
 use odra::prelude::*;
 use odra::Address;
 use odra::SubModule;
+use odra::UnwrapOrRevert;
 use odra::Var;
 
+use crate::generic_address;
 use crate::GenericAddress;
 use crate::Pubkey;
 
@@ -16,6 +18,7 @@ pub mod events;
 pub mod storage;
 mod tests;
 
+use crate::message_transmitter::MessageTransmitterContractRef;
 use storage::RemoteTokenMessengers;
 
 #[odra::module]
@@ -60,7 +63,7 @@ impl TokenMessengerMinter {
         };
         assert_eq!(self.version.get().unwrap(), burn_message.version());
         let mint_recipient: GenericAddress = burn_message.mint_recipient();
-        let burn_token: GenericAddress = burn_message.burn_token();
+        let burn_token: Pubkey = burn_message.burn_token();
         let amount: u64 = burn_message.amount();
 
         // todo: find local minter for the token
@@ -84,10 +87,10 @@ impl TokenMessengerMinter {
         self.remote_token_messengers
             .add_remote_token_messenger(domain, remote_token_messenger);
     }
-    pub fn remove_remote_token_messenger(&mut self, domain: u32, remote_token_messenger: Pubkey) {
+    pub fn remove_remote_token_messenger(&mut self, domain: u32) {
         self.require_owner();
         self.remote_token_messengers
-            .remove_remote_token_messenger(domain, remote_token_messenger);
+            .remove_remote_token_messenger(domain);
     }
 
     pub fn link_token_pair(&self) {}
@@ -110,12 +113,65 @@ impl TokenMessengerMinter {
     fn burn(&self) {
         self.require_not_paused();
     }
-    fn _deposit_for_burn(&self, amount: u64, destination_domain: u32, mint_recipient: Pubkey) {
+    fn _deposit_for_burn(
+        &self,
+        amount: u64,
+        destination_domain: u32,
+        mint_recipient: Pubkey,
+        burn_token: GenericAddress,
+        destination_caller: Pubkey,
+    ) {
         assert_eq!(amount, 0u64);
         assert_eq!(mint_recipient, [0u8; 32]);
         todo!("Finish burn function");
         self.burn();
-        //let burn_message = BurnMessage::format_message(self.version.get().unwrap(), burn_token, &mint_recipient, amount, message_sender);
+        let burn_message: Vec<u8> = BurnMessage::format_message(
+            self.version.get().unwrap(),
+            &burn_token,
+            &mint_recipient,
+            amount,
+            &generic_address(self.env().caller()),
+        );
+        let destination_token_messenger: Pubkey = self
+            .remote_token_messengers
+            .get_remote_token_messenger(destination_domain)
+            .unwrap();
+        self._send_deposit_for_burn_message(
+            destination_domain,
+            destination_token_messenger,
+            destination_caller,
+            &burn_message,
+        )
+    }
+
+    fn _send_deposit_for_burn_message(
+        &self,
+        destination_domain: u32,
+        destination_token_messenger: Pubkey,
+        destination_caller: Pubkey,
+        burn_message: &Vec<u8>,
+    ) {
+        let local_message_transmitter: MessageTransmitterContractRef =
+            MessageTransmitterContractRef::new(
+                self.env(),
+                self.local_message_transmitter
+                    .get()
+                    .unwrap_or_revert(&self.env()),
+            );
+        if destination_caller == [0u8; 32] {
+            local_message_transmitter.send_message(
+                destination_domain,
+                destination_token_messenger,
+                burn_message,
+            );
+        } else {
+            local_message_transmitter.send_message_with_caller(
+                destination_domain,
+                destination_token_messenger,
+                burn_message,
+                destination_caller,
+            );
+        }
     }
 
     fn require_not_paused(&self) {

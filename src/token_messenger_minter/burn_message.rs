@@ -1,5 +1,5 @@
 extern crate alloc;
-use crate::Pubkey;
+use crate::{GenericAddress, Pubkey};
 use alloc::{vec, vec::Vec};
 use odra::casper_types::ContractPackageHash;
 
@@ -31,11 +31,11 @@ impl<'a> BurnMessage<'a> {
     pub fn format_message(
         version: u32,
         // always contract
-        burn_token: &ContractPackageHash,
+        burn_token: &GenericAddress,
         mint_recipient: &Pubkey,
         amount: u64,
         // throw away the byte
-        message_sender: &Pubkey,
+        message_sender: &GenericAddress,
     ) -> Vec<u8> {
         let mut output: Vec<u8> = vec![0; Self::BURN_MESSAGE_LEN];
         output[Self::VERSION_INDEX..Self::BURN_TOKEN_INDEX].copy_from_slice(&version.to_be_bytes());

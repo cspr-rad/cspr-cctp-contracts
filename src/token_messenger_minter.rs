@@ -1,11 +1,7 @@
 use burn_message::BurnMessage;
-use odra::casper_types::bytesrepr::FromBytes;
-use odra::casper_types::ContractHash;
-use odra::casper_types::PublicKey;
 use odra::casper_types::U256;
 use odra::prelude::*;
 use odra::Address;
-use odra::Mapping;
 use odra::SubModule;
 use odra::UnwrapOrRevert;
 use odra::Var;
@@ -146,8 +142,7 @@ impl TokenMessengerMinter {
         self.require_not_paused();
         let mut stable_coin_contract = StablecoinContractRef::new(self.env(), burn_token);
         // burn Stablecoin from MessengerMinter allowance
-        todo!("Serious problem!: Burn must be adjusted");
-        stable_coin_contract.burn(burn_amount);
+        stable_coin_contract.burn(burn_amount, self.env().caller());
     }
     fn _deposit_for_burn(
         &self,

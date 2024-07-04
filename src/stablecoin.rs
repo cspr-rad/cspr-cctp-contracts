@@ -229,14 +229,23 @@ impl Stablecoin {
     }
 
     /// Burns the given amount of tokens from the given address.
-    pub fn burn(&mut self, amount: U256) {
+    pub fn burn(&mut self, amount: U256, account: Address) {
         self.assert_burn_and_mint_enabled();
         self.require_not_role(&self.caller(), &Roles::Blacklisted);
         self.require_role(&self.caller(), &Roles::Minter);
         if amount == U256::zero() {
             self.env().revert(Error::InvalidAmount)
         }
-        self.raw_burn(&self.caller(), &amount);
+        let minter_allowance: U256 = self
+            .minter_allowances
+            .get_or_default(&generic_address(*&self.caller()));
+        if &minter_allowance < &amount {
+            self.env().revert(Error::InsufficientMinterAllowance);
+        }
+        self.minter_allowances
+            .subtract(&generic_address(*&self.caller()), amount);
+        // problem: Odra does not support callstack traversal
+        self.raw_burn(&account, &amount);
     }
 
     /// Mints new tokens and assigns them to the given address.

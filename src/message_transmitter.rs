@@ -1,3 +1,5 @@
+use events::MessageReceived;
+use events::MessageSent;
 use odra::casper_types::bytesrepr::ToBytes;
 use odra::casper_types::U256;
 use odra::prelude::*;
@@ -106,15 +108,25 @@ impl MessageTransmitter {
         let nonce: u64 = message.nonce();
         let sender: [u8; 32] = message.sender();
         let hashed_nonce: [u8; 32] = hash_nonce(nonce, sender);
+        let source_domain: u32 = message.source_domain();
+        let sender: [u8; 32] = message.sender();
+        let message_body = message.message_body();
+
         assert_eq!(self.used_nonces.is_used_nonce(nonce, hashed_nonce), false);
         self.used_nonces.use_nonce(nonce, hash_nonce(nonce, sender));
 
         token_messenger_minter_contract.handle_receive_message(
-            message.source_domain(),
-            message.sender(),
-            &message.message_body().to_vec(),
+            source_domain,
+            sender,
+            &message_body.to_vec(),
         );
-        // emit a message received event
+        self.env().emit_event(MessageReceived {
+            caller: generic_address(self.env().caller()),
+            source_domain,
+            nonce,
+            sender,
+            message_body: message_body.to_vec(),
+        })
     }
     pub fn replace_message(&self) {
         self.require_not_paused();
@@ -199,7 +211,9 @@ impl MessageTransmitter {
                 message_body,
             ),
         };
-        // Todo: Emit the constructed Message as an Event
+        self.env().emit_event(MessageSent {
+            message: message.data.to_vec()
+        });
     }
 }
 fn hash_nonce(nonce: u64, account: GenericAddress) -> [u8; 32] {

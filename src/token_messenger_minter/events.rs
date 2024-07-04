@@ -23,22 +23,26 @@ pub struct MintAndWithdraw {
 
 #[odra::event]
 pub struct RemoteTokenMessengerAdded {
-    domain: u32,
-    token_messenger: Pubkey,
+    pub domain: u32,
+    pub token_messenger: Pubkey,
 }
 
 #[odra::event]
 pub struct RemoteTokenMessengerRemoved {
-    domain: u32,
-    token_messenger: Pubkey,
+    pub domain: u32,
+    pub token_messenger: Pubkey,
 }
 
 #[odra::event]
-pub struct LocalMinterAdded {
-    address: GenericAddress,
+pub struct TokenPairLinked {
+    pub local_token: GenericAddress,
+    pub remote_token: Pubkey,
+    pub domain: u32,
 }
 
 #[odra::event]
-pub struct LocalMinterRemoved {
-    address: GenericAddress,
+pub struct TokenPairUnlinked {
+    pub local_token: GenericAddress,
+    pub remote_token: Pubkey,
+    pub domain: u32,
 }

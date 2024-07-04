@@ -1,6 +1,10 @@
 use burn_message::BurnMessage;
 use events::DepositForBurn;
 use events::MintAndWithdraw;
+use events::RemoteTokenMessengerAdded;
+use events::RemoteTokenMessengerRemoved;
+use events::TokenPairLinked;
+use events::TokenPairUnlinked;
 use odra::casper_types::U256;
 use odra::prelude::*;
 use odra::Address;
@@ -33,7 +37,7 @@ pub struct TokenMessengerMinter {
     remote_token_messengers: SubModule<RemoteTokenMessengers>,
     owner: Var<Address>,
     pending_owner: Var<Option<Address>>,
-    linked_token_pairs: Mapping<Pubkey, Option<Address>>,
+    linked_token_pairs: Mapping<(u32, Pubkey), Option<Address>>,
 }
 
 #[odra::module]
@@ -131,21 +135,48 @@ impl TokenMessengerMinter {
         self.require_owner();
         self.remote_token_messengers
             .add_remote_token_messenger(domain, remote_token_messenger);
+        self.env().emit_event(RemoteTokenMessengerAdded {
+            domain,
+            token_messenger: remote_token_messenger,
+        });
     }
     pub fn remove_remote_token_messenger(&mut self, domain: u32) {
         self.require_owner();
+        let token_messenger: Pubkey = self
+            .remote_token_messengers
+            .get_remote_token_messenger(domain)
+            .unwrap();
         self.remote_token_messengers
             .remove_remote_token_messenger(domain);
+        self.env().emit_event(RemoteTokenMessengerRemoved {
+            domain,
+            token_messenger,
+        });
     }
 
-    pub fn link_token_pair(&mut self, local_token: Address, remote_token: Pubkey) {
+    pub fn link_token_pair(&mut self, local_token: Address, remote_token: Pubkey, domain: u32) {
         self.require_owner();
         self.linked_token_pairs
-            .set(&remote_token, Some(local_token));
+            .set(&(domain, remote_token), Some(local_token));
+        self.env().emit_event(TokenPairLinked {
+            local_token: generic_address(local_token),
+            remote_token,
+            domain,
+        });
     }
-    pub fn unlink_token_pair(&mut self, remote_token: Pubkey) {
+    pub fn unlink_token_pair(&mut self, remote_token: Pubkey, domain: u32) {
         self.require_owner();
-        self.linked_token_pairs.set(&remote_token, None);
+        let local_token: Address = self
+            .linked_token_pairs
+            .get(&(domain, remote_token))
+            .unwrap()
+            .unwrap();
+        self.linked_token_pairs.set(&(domain, remote_token), None);
+        self.env().emit_event(TokenPairUnlinked {
+            local_token: generic_address(local_token),
+            remote_token,
+            domain,
+        });
     }
     pub fn pause(&mut self) {
         self.require_owner();
@@ -167,7 +198,7 @@ impl TokenMessengerMinter {
         self.require_not_paused();
         let local_token: Address = self
             .linked_token_pairs
-            .get(&burn_token)
+            .get(&(source_domain, burn_token))
             .unwrap_or_revert(&self.env())
             .unwrap();
         let mut stable_coin_contract: StablecoinContractRef =

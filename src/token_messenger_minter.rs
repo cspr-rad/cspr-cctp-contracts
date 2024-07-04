@@ -104,6 +104,13 @@ impl TokenMessengerMinter {
         message_body: &Vec<u8>,
     ) {
         self.require_local_message_transmitter();
+        // remote sender must be remote token messenger
+        assert_eq!(
+            self.remote_token_messengers
+                .get_remote_token_messenger(remote_domain)
+                .unwrap(),
+            sender
+        );
         // todo: validate burn message format
         let burn_message: BurnMessage = BurnMessage {
             data: &message_body,

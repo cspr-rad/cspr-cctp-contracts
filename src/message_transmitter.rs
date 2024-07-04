@@ -212,7 +212,7 @@ impl MessageTransmitter {
             ),
         };
         self.env().emit_event(MessageSent {
-            message: message.data.to_vec()
+            message: message.data.to_vec(),
         });
     }
 }

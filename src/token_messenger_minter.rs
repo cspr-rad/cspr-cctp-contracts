@@ -89,6 +89,7 @@ impl TokenMessengerMinter {
         sender: Pubkey,
         message_body: &Vec<u8>,
     ) {
+        self.require_local_message_transmitter();
         // todo: validate burn message format
         let burn_message: BurnMessage = BurnMessage {
             data: &message_body,
@@ -145,6 +146,7 @@ impl TokenMessengerMinter {
         self.require_not_paused();
         let mut stable_coin_contract = StablecoinContractRef::new(self.env(), burn_token);
         // burn Stablecoin from MessengerMinter allowance
+        todo!("Serious problem!: Burn must be adjusted");
         stable_coin_contract.burn(burn_amount);
     }
     fn _deposit_for_burn(
@@ -218,6 +220,11 @@ impl TokenMessengerMinter {
     }
     fn require_owner(&self) {
         if self.env().caller() != self.owner.get().unwrap() {
+            todo!("Throw a meaningful error")
+        }
+    }
+    fn require_local_message_transmitter(&self){
+        if self.env().caller() != self.local_message_transmitter.get().unwrap() {
             todo!("Throw a meaningful error")
         }
     }

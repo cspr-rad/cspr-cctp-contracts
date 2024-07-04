@@ -12,6 +12,7 @@ pub mod utils;
 
 use crate::stablecoin::errors::Error;
 
+use crate::generic_address;
 use crate::stablecoin::events::{
     Blacklist, BlacklisterChanged, Burn, ControllerConfigured, ControllerRemoved,
     DecreaseAllowance, IncreaseAllowance, Mint, MinterConfigured, MinterRemoved, Paused,
@@ -24,7 +25,6 @@ use crate::stablecoin::storage::{
     StablecoinSymbolStorage, StablecoinTotalSupplyStorage,
 };
 use crate::stablecoin::utils::StablecoinModality;
-use crate::generic_address;
 
 /// CEP-18 token module
 #[odra::module(events = [Mint, Burn, SetAllowance, IncreaseAllowance, DecreaseAllowance, Transfer, TransferFrom])]

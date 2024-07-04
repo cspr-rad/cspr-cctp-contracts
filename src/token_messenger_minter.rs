@@ -1,5 +1,6 @@
 use burn_message::BurnMessage;
 use events::DepositForBurn;
+use events::MintAndWithdraw;
 use odra::casper_types::U256;
 use odra::prelude::*;
 use odra::Address;
@@ -107,7 +108,12 @@ impl TokenMessengerMinter {
         let mint_recipient: GenericAddress = burn_message.mint_recipient();
         let burn_token: Pubkey = burn_message.burn_token();
         let amount: u64 = burn_message.amount();
-        self.mint(remote_domain, burn_token, mint_recipient, amount);
+        let mint_token = self.mint(remote_domain, burn_token, mint_recipient, amount);
+        self.env().emit_event(MintAndWithdraw {
+            mint_recipient,
+            amount: U256::from(amount),
+            mint_token: generic_address(mint_token),
+        });
     }
     pub fn transfer_ownership(&mut self, new_pending_owner: Address) {
         self.require_owner();
@@ -151,7 +157,13 @@ impl TokenMessengerMinter {
     }
     pub fn set_max_burn_amount_per_message(&self) {}
     // Mint get_local_token(burn_token) on the Casper domain
-    fn mint(&self, source_domain: u32, burn_token: Pubkey, to: GenericAddress, amount: u64) {
+    fn mint(
+        &self,
+        source_domain: u32,
+        burn_token: Pubkey,
+        to: GenericAddress,
+        amount: u64,
+    ) -> Address {
         self.require_not_paused();
         let local_token: Address = self
             .linked_token_pairs
@@ -164,6 +176,7 @@ impl TokenMessengerMinter {
         // logic of the stablecoin.
         stable_coin_contract.mint(&generic_address_to_account_address(to), U256::from(amount));
         // todo: emit event
+        local_token
     }
     fn burn(&self, burn_token: Address, burn_amount: U256) {
         self.require_not_paused();
@@ -202,7 +215,7 @@ impl TokenMessengerMinter {
             destination_caller,
             &burn_message,
         );
-        self.env().emit_event(DepositForBurn{
+        self.env().emit_event(DepositForBurn {
             // todo: adjust nonce logic to get next available nonce from transmitter
             nonce: 0u64,
             burn_token,
@@ -211,7 +224,7 @@ impl TokenMessengerMinter {
             mint_recipient,
             destination_domain,
             destination_token_messenger,
-            destination_caller
+            destination_caller,
         })
     }
 
@@ -243,7 +256,6 @@ impl TokenMessengerMinter {
                 destination_caller,
             );
         }
-        // todo: emit MintAndWithdraw event
     }
 
     fn require_not_paused(&self) {

@@ -57,14 +57,14 @@ impl TokenMessengerMinter {
         amount: u64,
         destination_domain: u32,
         mint_recipient: Pubkey,
-        burn_token: GenericAddress,
+        burn_token: Address,
     ) {
         let destination_caller: Pubkey = [0u8; 32];
         self._deposit_for_burn(
             amount,
             destination_domain,
             mint_recipient,
-            burn_token,
+            generic_address(burn_token),
             destination_caller,
         );
     }
@@ -263,10 +263,11 @@ impl TokenMessengerMinter {
         burn_token: GenericAddress,
         destination_caller: Pubkey,
     ) {
-        assert_eq!(burn_amount, 0u64);
-        assert_eq!(mint_recipient, [0u8; 32]);
+        assert_ne!(burn_amount, 0u64);
+        assert_ne!(mint_recipient, [0u8; 32]);
+        let token_contract_address: Address = generic_address_to_contract_address(burn_token);
         self.burn(
-            generic_address_to_contract_address(burn_token),
+            token_contract_address,
             U256::from(burn_amount),
         );
         let burn_message: Vec<u8> = BurnMessage::format_message(

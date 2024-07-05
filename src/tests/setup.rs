@@ -14,7 +14,7 @@ mod test_setup{
         MessageTransmitterHostRef, MessageTransmitterInitArgs
     };
     #[test]
-    fn setup_cctp_contracts(){
+    fn setup_cctp_contracts_and_test_deposit_for_burn(){
         // install stablecoin
         // install message transmitter
         // install token messenger minter
@@ -26,6 +26,7 @@ mod test_setup{
         let master_minter = env.get_account(1);
         let blacklister = env.get_account(2);
         let controller = env.get_account(3);
+        let fake_minter = env.get_account(4);
         let stablecoin_init_args = StablecoinInitArgs{
             symbol: "USDC".to_string(),
             name: "USDCoin".to_string(),
@@ -53,13 +54,30 @@ mod test_setup{
             local_message_transmitter: *message_transmitter.address(),
             owner
         };
-
         let mut token_messenger_minter: TokenMessengerMinterHostRef = TokenMessengerMinterHostRef::deploy(&env, token_messenger_minter_init_args);
+        let user = env.get_account(5);
+        env.set_caller(master_minter);
+        stablecoin.configure_controller(&controller, &fake_minter.address());
+        env.set_caller(controller);
+        stablecoin.configure_minter_allowance(100.into());
+        env.set_caller(fake_minter);
+        // use fake minter to mint 10 tokens - we want to test depositForBurn, not receive message
+        stablecoin.mint(&user, 10.into());
         env.set_caller(master_minter);
         stablecoin.configure_controller(&controller, token_messenger_minter.address());
         env.set_caller(controller);
         stablecoin.configure_minter_allowance(100.into());
         env.set_caller(owner);
-        token_messenger_minter.link_token_pair(*stablecoin.address(), [0u8;32], 0u32);
+        token_messenger_minter.link_token_pair(*stablecoin.address(), [0u8;32], 0u32);   
+        let mint_recipient: [u8;32] = [1u8;32];
+        env.set_caller(owner);
+        token_messenger_minter.add_remote_token_messenger(0u32, [2u8;32]);
+        env.set_caller(user);
+        stablecoin.approve(token_messenger_minter.address(), &10.into());
+        token_messenger_minter.deposit_for_burn(10, 0u32, mint_recipient, *stablecoin.address());
+        assert!(
+            env.emitted(token_messenger_minter.address(), "DepositForBurn"),
+            "DepositForBurn event not emitted"
+        );
     }
 }

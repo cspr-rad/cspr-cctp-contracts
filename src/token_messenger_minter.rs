@@ -16,7 +16,7 @@ use odra::Var;
 use crate::generic_address;
 use crate::generic_address_to_account_address;
 use crate::generic_address_to_contract_address;
-use crate::message_transmitter::Message;
+use crate::message_transmitter::message::Message;
 use crate::GenericAddress;
 use crate::Pubkey;
 
@@ -285,7 +285,6 @@ impl TokenMessengerMinter {
             &burn_message,
         );
         self.env().emit_event(DepositForBurn {
-            // todo: adjust nonce logic to get next available nonce from transmitter
             nonce,
             burn_token,
             amount: U256::from(burn_amount),

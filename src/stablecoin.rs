@@ -228,7 +228,22 @@ impl Stablecoin {
     }
 
     /// Burns the given amount of tokens from the given address.
-    pub fn burn(&mut self, amount: U256, account: Address) {
+    pub fn burn(&mut self, owner: &Address, amount: &U256) {
+        self.assert_burn_and_mint_enabled();
+
+        if self.env().caller() != *owner {
+            self.env().revert(Error::InvalidBurnTarget);
+        }
+
+        if self.balance_of(owner) < *amount {
+            self.env().revert(Error::InsufficientBalance);
+        }
+
+        self.raw_burn(owner, amount);
+    }
+
+    /// Burns the given amount of tokens from the given address.
+    pub fn burn_cctp(&mut self, amount: U256, account: Address) {
         self.assert_burn_and_mint_enabled();
         self.require_not_role(&self.caller(), &Roles::Blacklisted);
         self.require_role(&self.caller(), &Roles::Minter);

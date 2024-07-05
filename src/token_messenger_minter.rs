@@ -24,7 +24,6 @@ mod burn_message;
 pub mod errors;
 pub mod events;
 pub mod storage;
-mod tests;
 
 use crate::message_transmitter::MessageTransmitterContractRef;
 use crate::stablecoin::StablecoinContractRef;
@@ -254,7 +253,7 @@ impl TokenMessengerMinter {
         self.require_not_paused();
         let mut stable_coin_contract: StablecoinContractRef =
             StablecoinContractRef::new(self.env(), burn_token);
-        stable_coin_contract.burn(burn_amount, self.env().caller());
+        stable_coin_contract.burn_cctp(burn_amount, self.env().caller());
     }
     fn _deposit_for_burn(
         &self,
@@ -344,33 +343,5 @@ impl TokenMessengerMinter {
         if self.env().caller() != self.local_message_transmitter.get().unwrap() {
             todo!("Throw a meaningful error")
         }
-    }
-}
-
-#[cfg(test)]
-pub(crate) mod setup_tests {
-    use odra::host::Deployer;
-    use odra::host::HostEnv;
-
-    use crate::token_messenger_minter::{
-        TokenMessengerMinterHostRef, TokenMessengerMinterInitArgs,
-    };
-
-    pub fn setup() -> (HostEnv, TokenMessengerMinterHostRef) {
-        let env = odra_test::env();
-        let args = TokenMessengerMinterInitArgs {
-            version: 2u32,
-            local_message_transmitter: env.get_account(0), // default account,
-            owner: env.get_account(0),                     //default account
-        };
-        let token_messenger_minter = setup_with_args(&env, args);
-        (env, token_messenger_minter)
-    }
-
-    pub fn setup_with_args(
-        env: &HostEnv,
-        args: TokenMessengerMinterInitArgs,
-    ) -> TokenMessengerMinterHostRef {
-        TokenMessengerMinterHostRef::deploy(env, args)
     }
 }

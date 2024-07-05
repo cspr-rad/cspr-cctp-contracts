@@ -18,7 +18,6 @@ use crate::Pubkey;
 pub mod errors;
 pub mod events;
 pub mod storage;
-mod tests;
 
 use crate::token_messenger_minter::TokenMessengerMinterContractRef;
 use tiny_keccak::Keccak;
@@ -367,32 +366,5 @@ impl<'a> Message<'a> {
     /// Reads pubkey field at the given offset
     fn read_generic_address(&self, index: usize) -> GenericAddress {
         self.data[index..(index + 32)].try_into().unwrap()
-    }
-}
-
-#[cfg(test)]
-pub(crate) mod setup_tests {
-    use crate::message_transmitter::{MessageTransmitterHostRef, MessageTransmitterInitArgs};
-    use odra::host::{Deployer, HostEnv};
-
-    pub fn setup() -> (HostEnv, MessageTransmitterHostRef) {
-        let env = odra_test::env();
-        let args = MessageTransmitterInitArgs {
-            local_domain: 31u32, // 31: CA
-            version: 1u32,
-            max_message_body_size: 1_000_000_000.into(), // unreasonably high for development
-            next_available_nonce: 1,                     // start from nonce = 1
-            signature_threshold: 1,                      // default: 1
-            owner: env.get_account(0),                   // default account as owner
-        };
-        let message_transmitter = setup_with_args(&env, args);
-        (env, message_transmitter)
-    }
-
-    pub fn setup_with_args(
-        env: &HostEnv,
-        args: MessageTransmitterInitArgs,
-    ) -> MessageTransmitterHostRef {
-        MessageTransmitterHostRef::deploy(env, args)
     }
 }

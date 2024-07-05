@@ -266,10 +266,7 @@ impl TokenMessengerMinter {
         assert_ne!(burn_amount, 0u64);
         assert_ne!(mint_recipient, [0u8; 32]);
         let token_contract_address: Address = generic_address_to_contract_address(burn_token);
-        self.burn(
-            token_contract_address,
-            U256::from(burn_amount),
-        );
+        self.burn(token_contract_address, U256::from(burn_amount));
         let burn_message: Vec<u8> = BurnMessage::format_message(
             self.version.get().unwrap(),
             &burn_token,

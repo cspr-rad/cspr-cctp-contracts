@@ -11,8 +11,8 @@ use odra::{
 };
 pub mod message_transmitter;
 pub mod stablecoin;
-pub mod token_messenger_minter;
 mod tests;
+pub mod token_messenger_minter;
 
 // type alias for generic Pubkey
 pub type Pubkey = [u8; 32];

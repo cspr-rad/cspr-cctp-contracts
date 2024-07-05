@@ -139,7 +139,7 @@ impl MessageTransmitter {
     pub fn receive_message(&mut self, data: &Vec<u8>, attestation: &Vec<u8>) {
         self.require_not_paused();
         // todo: verify attestations and check that the threshold is met
-        let message: Message = Message { data };
+        let message: Message = Message::new(self.version.get().unwrap(), data);
         assert_eq!(message.version(), self.version.get().unwrap());
         let token_messenger_minter_contract: TokenMessengerMinterContractRef =
             TokenMessengerMinterContractRef::new(
@@ -231,18 +231,17 @@ impl MessageTransmitter {
         assert_ne!(recipient, [0u8; 32]);
         // Validate message body length
         assert!(U256::from(message_body.len()) <= self.max_message_body_size.get().unwrap());
-        let message: Message = Message {
-            data: &Message::format_message(
-                self.version.get().unwrap(),
-                self.local_domain.get().unwrap(),
-                destination_domain,
-                nonce,
-                &sender,
-                &recipient,
-                &destination_caller,
-                message_body,
-            ),
-        };
+        let message_body: &Vec<u8> = &Message::format_message(
+            self.version.get().unwrap(),
+            self.local_domain.get().unwrap(),
+            destination_domain,
+            nonce,
+            &sender,
+            &recipient,
+            &destination_caller,
+            message_body,
+        );
+        let message: Message = Message::new(self.version.get().unwrap(), &message_body);
         self.env().emit_event(MessageSent {
             message: message.data.to_vec(),
         });

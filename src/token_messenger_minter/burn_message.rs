@@ -17,11 +17,13 @@ impl<'a> BurnMessage<'a> {
     const AMOUNT_OFFSET: usize = 24;
 
     /// Validates source array size and returns a new message
-    pub fn new(message_bytes: &'a [u8]) -> Self {
-        // todo: validate source array
-        Self {
+    pub fn new(expected_version: u32, message_bytes: &'a [u8]) -> Self {
+        assert_eq!(message_bytes.len(), Self::BURN_MESSAGE_LEN);
+        let burn_message = Self {
             data: &message_bytes,
-        }
+        };
+        assert_eq!(burn_message.version(), expected_version);
+        burn_message
     }
 
     #[allow(clippy::too_many_arguments)]

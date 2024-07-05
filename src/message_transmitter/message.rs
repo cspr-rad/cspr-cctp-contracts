@@ -17,11 +17,12 @@ impl<'a> Message<'a> {
     const MESSAGE_BODY_INDEX: usize = 116;
 
     pub fn new(expected_version: u32, message_bytes: &'a [u8]) -> Self {
-        //todo: check message bytes size is >= MESSAGE_BODY_INDEX
-        //todo: check message version against local
-        Message {
+        assert!(message_bytes.len() >= Self::MESSAGE_BODY_INDEX);
+        let message = Self {
             data: &message_bytes,
-        }
+        };
+        assert_eq!(message.version(), expected_version);
+        message
     }
 
     pub fn format_message(

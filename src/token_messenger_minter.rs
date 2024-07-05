@@ -93,14 +93,9 @@ impl TokenMessengerMinter {
         new_destination_caller: Pubkey,
         new_mint_recipient: Pubkey,
     ) {
-        // todo: validate message format
-        // todo: validate message body format
-        let original_msg: Message = Message {
-            data: &original_message,
-        };
-        let original_burn_msg: BurnMessage = BurnMessage {
-            data: original_msg.message_body(),
-        };
+        let original_msg: Message = Message::new(self.version.get().unwrap(), &original_message);
+        let original_burn_msg: BurnMessage =
+            BurnMessage::new(self.version.get().unwrap(), original_msg.message_body());
         let burn_token: [u8; 32] = original_burn_msg.burn_token();
         let amount: u64 = original_burn_msg.amount();
         let sender: [u8; 32] = original_burn_msg.message_sender();
@@ -145,9 +140,8 @@ impl TokenMessengerMinter {
             sender
         );
         // todo: validate burn message format
-        let burn_message: BurnMessage = BurnMessage {
-            data: &message_body,
-        };
+        let burn_message: BurnMessage =
+            BurnMessage::new(self.version.get().unwrap(), &message_body);
         assert_eq!(self.version.get().unwrap(), burn_message.version());
         let mint_recipient: GenericAddress = burn_message.mint_recipient();
         let burn_token: Pubkey = burn_message.burn_token();

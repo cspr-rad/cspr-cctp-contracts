@@ -243,6 +243,18 @@ impl Stablecoin {
         }
         self.minter_allowances
             .subtract(&generic_address(*&self.caller()), amount);
+        // must check spender allowance
+        let allowance = self.allowance(&account, &self.caller());
+        if allowance < amount {
+            self.env().revert(Error::InsufficientAllowance);
+        }
+        self.allowances.set(
+            &generic_address(account),
+            &generic_address(self.caller()),
+            allowance
+                .checked_sub(amount)
+                .unwrap_or_revert_with(&self.env(), Error::InsufficientAllowance),
+        );
         // problem: Odra does not support callstack traversal
         self.raw_burn(&account, &amount);
     }

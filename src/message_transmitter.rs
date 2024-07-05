@@ -123,7 +123,7 @@ impl MessageTransmitter {
             new_message_body,
         );
     }
-    pub fn receive_message(&mut self, data: &Vec<u8>, attestations: &Vec<u8>) {
+    pub fn receive_message(&mut self, data: &Vec<u8>, attestation: &Vec<u8>) {
         self.require_not_paused();
         // todo: verify attestations and check that the threshold is met
         let message: Message = Message { data };

@@ -57,7 +57,6 @@ impl Stablecoin {
         initial_supply: U256,
         // the master_minter can't mint
         master_minter_list: Vec<Address>,
-        owner_list: Vec<Address>,
         pauser_list: Vec<Address>,
         blacklister: Address,
         modality: Option<StablecoinModality>,
@@ -79,11 +78,6 @@ impl Stablecoin {
         for master_minter in master_minter_list {
             self.roles
                 .configure_role(&Roles::MasterMinter, &generic_address(master_minter));
-        }
-
-        for owner in owner_list {
-            self.roles
-                .configure_role(&Roles::Owner, &generic_address(owner));
         }
 
         for pauser in pauser_list {
@@ -583,7 +577,6 @@ pub(crate) mod setup_tests {
             decimals: TOKEN_DECIMALS,
             initial_supply: TOKEN_TOTAL_SUPPLY.into(),
             master_minter_list: vec![master_minter],
-            owner_list: vec![],
             pauser_list: vec![pauser],
             blacklister: blacklister,
             modality: Some(crate::stablecoin::utils::StablecoinModality::MintAndBurn),

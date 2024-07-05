@@ -278,7 +278,7 @@ impl TokenMessengerMinter {
             .remote_token_messengers
             .get_remote_token_messenger(destination_domain)
             .unwrap();
-        self._send_deposit_for_burn_message(
+        let nonce = self._send_deposit_for_burn_message(
             destination_domain,
             destination_token_messenger,
             destination_caller,
@@ -286,7 +286,7 @@ impl TokenMessengerMinter {
         );
         self.env().emit_event(DepositForBurn {
             // todo: adjust nonce logic to get next available nonce from transmitter
-            nonce: 0u64,
+            nonce,
             burn_token,
             amount: U256::from(burn_amount),
             depositor: generic_address(self.env().caller()),
@@ -303,8 +303,8 @@ impl TokenMessengerMinter {
         destination_token_messenger: Pubkey,
         destination_caller: Pubkey,
         burn_message: &Vec<u8>,
-    ) {
-        let local_message_transmitter: MessageTransmitterContractRef =
+    ) -> u64 {
+        let mut local_message_transmitter: MessageTransmitterContractRef =
             MessageTransmitterContractRef::new(
                 self.env(),
                 self.local_message_transmitter
@@ -312,13 +312,13 @@ impl TokenMessengerMinter {
                     .unwrap_or_revert(&self.env()),
             );
         if destination_caller == [0u8; 32] {
-            local_message_transmitter.send_message(
+            return local_message_transmitter.send_message(
                 destination_domain,
                 destination_token_messenger,
                 burn_message,
             );
         } else {
-            local_message_transmitter.send_message_with_caller(
+            return local_message_transmitter.send_message_with_caller(
                 destination_domain,
                 destination_token_messenger,
                 burn_message,

@@ -28,6 +28,7 @@ pub struct MessageTransmitter {
     version: Var<u32>,
     paused: Var<bool>,
     max_message_body_size: Var<U256>,
+    // mapping of source domain : nonce
     next_available_nonce: Var<u64>,
     used_nonces: SubModule<UsedNonces>,
     attesters: SubModule<Attesters>,
@@ -52,15 +53,16 @@ impl MessageTransmitter {
         self.version.set(version);
         self.paused.set(false);
         self.max_message_body_size.set(max_message_body_size);
-        self.next_available_nonce.set(next_available_nonce);
         self.signature_threshold.set(signature_threshold);
+        self.next_available_nonce.set(next_available_nonce);
         self.owner.set(owner);
         self.pending_owner.set(None);
     }
-    pub fn send_message(&self, destination_domain: u32, recipient: Pubkey, message_body: &Vec<u8>) {
+    pub fn send_message(&mut self, destination_domain: u32, recipient: Pubkey, message_body: &Vec<u8>) -> u64{
         self.require_not_paused();
         let empty_destination_caller: [u8; 32] = [0u8; 32];
         let nonce: u64 = self.next_available_nonce.get().unwrap();
+        self.next_available_nonce.set(self.next_available_nonce.get().unwrap() + 1);
         let message_sender: GenericAddress = generic_address(self.env().caller());
         self._send_message(
             destination_domain,
@@ -70,16 +72,18 @@ impl MessageTransmitter {
             nonce,
             message_body,
         );
+        nonce
     }
     pub fn send_message_with_caller(
-        &self,
+        &mut self,
         destination_domain: u32,
         recipient: Pubkey,
         message_body: &Vec<u8>,
         destination_caller: Pubkey,
-    ) {
+    ) -> u64{
         self.require_not_paused();
         let nonce: u64 = self.next_available_nonce.get().unwrap();
+        self.next_available_nonce.set(self.next_available_nonce.get().unwrap() + 1);
         let message_sender: GenericAddress = generic_address(self.env().caller());
         self._send_message(
             destination_domain,
@@ -89,6 +93,7 @@ impl MessageTransmitter {
             nonce,
             message_body,
         );
+        nonce
     }
     pub fn replace_message(
         &self,
@@ -139,8 +144,8 @@ impl MessageTransmitter {
         let sender: [u8; 32] = message.sender();
         let message_body: &[u8] = message.message_body();
 
-        assert_eq!(self.used_nonces.is_used_nonce(nonce, hashed_nonce), false);
-        self.used_nonces.use_nonce(nonce, hash_nonce(nonce, sender));
+        assert_eq!(self.used_nonces.is_used_nonce(hashed_nonce), false);
+        self.used_nonces.use_nonce(hashed_nonce);
 
         token_messenger_minter_contract.handle_receive_message(
             source_domain,
@@ -183,12 +188,9 @@ impl MessageTransmitter {
         self.require_owner();
         self.paused.set(false);
     }
-    pub fn get_nonce_pda(&self) {
-        todo!("Implement");
-    }
     pub fn is_used_nonce(&self, nonce: u64, account: GenericAddress) -> bool {
         let nonce_hashed = hash_nonce(nonce, account);
-        self.used_nonces.is_used_nonce(nonce, nonce_hashed)
+        self.used_nonces.is_used_nonce(nonce_hashed)
     }
     pub fn enable_attester(&mut self, new_attester: Pubkey) {
         self.require_owner();

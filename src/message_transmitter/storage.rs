@@ -1,25 +1,18 @@
 use crate::Pubkey;
-use odra::{prelude::*, Mapping, Var};
+use odra::{prelude::*, Mapping};
 
 #[odra::module()]
 /// Storage module for the allowances of the token.
 pub struct UsedNonces {
-    first_nonce: Var<u64>,
     used_nonces: Mapping<[u8; 32], bool>,
 }
 
 #[odra::module]
 impl UsedNonces {
-    pub fn use_nonce(&mut self, nonce: u64, nonce_hashed: [u8; 32]) {
-        if nonce < self.first_nonce.get().unwrap() {
-            todo!("Revert with a meaningful error");
-        }
+    pub fn use_nonce(&mut self, nonce_hashed: [u8; 32]) {
         self.used_nonces.set(&nonce_hashed, true);
     }
-    pub fn is_used_nonce(&self, nonce: u64, nonce_hashed: [u8; 32]) -> bool {
-        if nonce < self.first_nonce.get().unwrap() {
-            return true;
-        }
+    pub fn is_used_nonce(&self, nonce_hashed: [u8; 32]) -> bool {
         self.used_nonces.get(&nonce_hashed).unwrap_or_default()
     }
 }

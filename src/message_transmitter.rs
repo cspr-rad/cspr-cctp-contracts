@@ -58,11 +58,17 @@ impl MessageTransmitter {
         self.owner.set(owner);
         self.pending_owner.set(None);
     }
-    pub fn send_message(&mut self, destination_domain: u32, recipient: Pubkey, message_body: &Vec<u8>) -> u64{
+    pub fn send_message(
+        &mut self,
+        destination_domain: u32,
+        recipient: Pubkey,
+        message_body: &Vec<u8>,
+    ) -> u64 {
         self.require_not_paused();
         let empty_destination_caller: [u8; 32] = [0u8; 32];
         let nonce: u64 = self.next_available_nonce.get().unwrap();
-        self.next_available_nonce.set(self.next_available_nonce.get().unwrap() + 1);
+        self.next_available_nonce
+            .set(self.next_available_nonce.get().unwrap() + 1);
         let message_sender: GenericAddress = generic_address(self.env().caller());
         self._send_message(
             destination_domain,
@@ -80,10 +86,11 @@ impl MessageTransmitter {
         recipient: Pubkey,
         message_body: &Vec<u8>,
         destination_caller: Pubkey,
-    ) -> u64{
+    ) -> u64 {
         self.require_not_paused();
         let nonce: u64 = self.next_available_nonce.get().unwrap();
-        self.next_available_nonce.set(self.next_available_nonce.get().unwrap() + 1);
+        self.next_available_nonce
+            .set(self.next_available_nonce.get().unwrap() + 1);
         let message_sender: GenericAddress = generic_address(self.env().caller());
         self._send_message(
             destination_domain,

@@ -7,7 +7,6 @@ pub struct BurnMessage<'a> {
 }
 
 impl<'a> BurnMessage<'a> {
-    // Indices of each field in the message
     const VERSION_INDEX: usize = 0;
     const BURN_TOKEN_INDEX: usize = 4;
     const MINT_RECIPIENT_INDEX: usize = 36;
@@ -15,8 +14,6 @@ impl<'a> BurnMessage<'a> {
     const MSG_SENDER_INDEX: usize = 100;
     // 4 byte version + 32 bytes burnToken + 32 bytes mintpubkey + 32 bytes amount + 32 bytes messageSender
     const BURN_MESSAGE_LEN: usize = 132;
-    // EVM amount is 32 bytes while we use only 8 bytes on Solana
-    const AMOUNT_OFFSET: usize = 24;
 
     /// Validates source array size and returns a new message
     pub fn new(message_bytes: &'a [u8]) -> Self {
@@ -43,8 +40,7 @@ impl<'a> BurnMessage<'a> {
             .copy_from_slice(burn_token.as_ref());
         output[Self::MINT_RECIPIENT_INDEX..Self::AMOUNT_INDEX]
             .copy_from_slice(mint_recipient.as_ref());
-        output[(Self::AMOUNT_INDEX + Self::AMOUNT_OFFSET)..Self::MSG_SENDER_INDEX]
-            .copy_from_slice(&amount.to_be_bytes());
+        output[Self::AMOUNT_INDEX..Self::MSG_SENDER_INDEX].copy_from_slice(&amount.to_be_bytes());
         output[Self::MSG_SENDER_INDEX..Self::BURN_MESSAGE_LEN]
             .copy_from_slice(message_sender.as_ref());
 
@@ -68,7 +64,7 @@ impl<'a> BurnMessage<'a> {
 
     /// Returns amount field
     pub fn amount(&self) -> u64 {
-        self.read_u64(Self::AMOUNT_INDEX + Self::AMOUNT_OFFSET)
+        self.read_u64(Self::AMOUNT_INDEX)
     }
 
     /// Returns message_sender field

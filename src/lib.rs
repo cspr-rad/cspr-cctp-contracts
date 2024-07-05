@@ -3,10 +3,7 @@
 extern crate alloc;
 use alloc::vec::Vec;
 use odra::{
-    casper_types::{
-        bytesrepr::{FromBytes, ToBytes},
-        PublicKey,
-    },
+    casper_types::bytesrepr::{FromBytes, ToBytes},
     Address,
 };
 pub mod message_transmitter;

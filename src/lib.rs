@@ -8,7 +8,6 @@ use odra::{
 };
 pub mod message_transmitter;
 pub mod stablecoin;
-mod tests;
 pub mod token_messenger_minter;
 
 // type alias for generic Pubkey

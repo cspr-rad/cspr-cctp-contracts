@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod test_setup {
-    use crate::message_transmitter::{MessageTransmitterHostRef, MessageTransmitterInitArgs};
-    use crate::stablecoin::StablecoinHostRef;
-    use crate::stablecoin::StablecoinInitArgs;
-    use crate::token_messenger_minter::{
+    use cctp_cspr_contracts::message_transmitter::{MessageTransmitterHostRef, MessageTransmitterInitArgs};
+    use cctp_cspr_contracts::stablecoin::StablecoinHostRef;
+    use cctp_cspr_contracts::stablecoin::StablecoinInitArgs;
+    use cctp_cspr_contracts::token_messenger_minter::{
         TokenMessengerMinterHostRef, TokenMessengerMinterInitArgs,
     };
     use odra::host::Deployer;
@@ -24,7 +24,7 @@ mod test_setup {
             master_minter_list: vec![master_minter],
             pauser_list: vec![],
             blacklister,
-            modality: Some(crate::stablecoin::utils::StablecoinModality::MintAndBurn),
+            modality: Some(cctp_cspr_contracts::stablecoin::utils::StablecoinModality::MintAndBurn),
         };
         let mut stablecoin: StablecoinHostRef =
             StablecoinHostRef::deploy(&env, stablecoin_init_args);

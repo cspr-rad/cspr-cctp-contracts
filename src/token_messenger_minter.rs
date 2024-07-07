@@ -5,6 +5,7 @@ use events::RemoteTokenMessengerAdded;
 use events::RemoteTokenMessengerRemoved;
 use events::TokenPairLinked;
 use events::TokenPairUnlinked;
+use odra::casper_types::bytesrepr::Bytes;
 use odra::casper_types::U256;
 use odra::prelude::*;
 use odra::Address;
@@ -20,7 +21,7 @@ use crate::message_transmitter::message::Message;
 use crate::GenericAddress;
 use crate::Pubkey;
 
-mod burn_message;
+pub mod burn_message;
 pub mod errors;
 pub mod events;
 pub mod storage;
@@ -88,8 +89,8 @@ impl TokenMessengerMinter {
 
     pub fn replace_deposit_for_burn(
         &self,
-        original_message: &Vec<u8>,
-        original_attestation: &Vec<u8>,
+        original_message: Bytes,
+        original_attestation: Bytes,
         new_destination_caller: Pubkey,
         new_mint_recipient: Pubkey,
     ) {
@@ -108,9 +109,9 @@ impl TokenMessengerMinter {
                 self.local_message_transmitter.get().unwrap(),
             );
         local_message_transmitter.replace_message(
-            original_message,
-            original_attestation,
-            &new_burn_message_body,
+            Bytes::from(original_message.clone()),
+            Bytes::from(original_attestation.clone()),
+            Bytes::from(new_burn_message_body),
             new_destination_caller,
         );
         self.env().emit_event(DepositForBurn {
@@ -129,7 +130,7 @@ impl TokenMessengerMinter {
         &self,
         remote_domain: u32,
         sender: Pubkey,
-        message_body: &Vec<u8>,
+        message_body: Bytes,
     ) {
         self.require_local_message_transmitter();
         // remote sender must be remote token messenger
@@ -276,7 +277,7 @@ impl TokenMessengerMinter {
             destination_domain,
             destination_token_messenger,
             destination_caller,
-            &burn_message,
+            Bytes::from(burn_message.clone()),
         );
         self.env().emit_event(DepositForBurn {
             nonce,
@@ -295,7 +296,7 @@ impl TokenMessengerMinter {
         destination_domain: u32,
         destination_token_messenger: Pubkey,
         destination_caller: Pubkey,
-        burn_message: &Vec<u8>,
+        burn_message: Bytes,
     ) -> u64 {
         let mut local_message_transmitter: MessageTransmitterContractRef =
             MessageTransmitterContractRef::new(
@@ -308,13 +309,13 @@ impl TokenMessengerMinter {
             return local_message_transmitter.send_message(
                 destination_domain,
                 destination_token_messenger,
-                burn_message,
+                Bytes::from(burn_message.clone()),
             );
         } else {
             return local_message_transmitter.send_message_with_caller(
                 destination_domain,
                 destination_token_messenger,
-                burn_message,
+                Bytes::from(burn_message.clone()),
                 destination_caller,
             );
         }

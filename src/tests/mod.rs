@@ -1,11 +1,14 @@
 #[cfg(test)]
 mod test_setup {
-    use cctp_cspr_contracts::message_transmitter::{MessageTransmitterHostRef, MessageTransmitterInitArgs};
-    use cctp_cspr_contracts::stablecoin::StablecoinHostRef;
-    use cctp_cspr_contracts::stablecoin::StablecoinInitArgs;
-    use cctp_cspr_contracts::token_messenger_minter::{
-        TokenMessengerMinterHostRef, TokenMessengerMinterInitArgs,
+    use crate::generic_address;
+    use crate::{message_transmitter::message::Message, token_messenger_minter::burn_message::BurnMessage};
+    use crate::message_transmitter::{MessageTransmitterHostRef, MessageTransmitterInitArgs};
+    use crate::stablecoin::StablecoinHostRef;
+    use crate::stablecoin::StablecoinInitArgs;
+    use crate::token_messenger_minter::{
+        burn_message, TokenMessengerMinterHostRef, TokenMessengerMinterInitArgs
     };
+    use odra::casper_types::bytesrepr::Bytes;
     use odra::host::Deployer;
     use odra::host::HostEnv;
     use odra::{Address, Addressable};
@@ -24,7 +27,7 @@ mod test_setup {
             master_minter_list: vec![master_minter],
             pauser_list: vec![],
             blacklister,
-            modality: Some(cctp_cspr_contracts::stablecoin::utils::StablecoinModality::MintAndBurn),
+            modality: Some(crate::stablecoin::utils::StablecoinModality::MintAndBurn),
         };
         let mut stablecoin: StablecoinHostRef =
             StablecoinHostRef::deploy(&env, stablecoin_init_args);
@@ -77,5 +80,25 @@ mod test_setup {
             env.emitted(token_messenger_minter.address(), "DepositForBurn"),
             "DepositForBurn event not emitted"
         );
+    }
+
+    #[test]
+    fn test_receive_message_from_remote_domain(){
+        let (env, mut stablecoin, mut message_transmitter, mut token_messenger_minter, owner, master_minter, blacklister, controller) = setup_cctp_contracts();
+        let remote_token_address: [u8; 32] = [10u8;32];
+        let remote_token_messenger: [u8;32] = [11u8;32];
+        let remote_domain: u32 = 0;
+        let mint_recipient: Address = env.get_account(0);
+        env.set_caller(master_minter);
+        stablecoin.configure_controller(&controller, token_messenger_minter.address());
+        env.set_caller(controller);
+        stablecoin.configure_minter_allowance(100.into());
+        env.set_caller(owner);
+        // message sender must be a remote_token_messenger
+        token_messenger_minter.add_remote_token_messenger(remote_domain, remote_token_messenger);
+        token_messenger_minter.link_token_pair(*stablecoin.address(), remote_token_address, remote_domain);
+        let message_body: Vec<u8> = BurnMessage::format_message(2, &remote_token_address, &generic_address(mint_recipient), 10, &remote_token_messenger);
+        let message: Vec<u8> = Message::format_message(2, remote_domain, 32, 0, &remote_token_messenger, &generic_address(mint_recipient), &[0u8;32], &message_body);
+        message_transmitter.receive_message(Bytes::from(message), Bytes::from(vec![]));
     }
 }

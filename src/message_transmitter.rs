@@ -1,5 +1,6 @@
 use events::MessageReceived;
 use events::MessageSent;
+use odra::casper_types::bytesrepr::Bytes;
 use odra::casper_types::bytesrepr::ToBytes;
 use odra::casper_types::U256;
 use odra::prelude::*;
@@ -64,7 +65,7 @@ impl MessageTransmitter {
         &mut self,
         destination_domain: u32,
         recipient: Pubkey,
-        message_body: &Vec<u8>,
+        message_body: Bytes,
     ) -> u64 {
         self.require_not_paused();
         let empty_destination_caller: [u8; 32] = [0u8; 32];
@@ -86,7 +87,7 @@ impl MessageTransmitter {
         &mut self,
         destination_domain: u32,
         recipient: Pubkey,
-        message_body: &Vec<u8>,
+        message_body: Bytes,
         destination_caller: Pubkey,
     ) -> u64 {
         self.require_not_paused();
@@ -106,9 +107,9 @@ impl MessageTransmitter {
     }
     pub fn replace_message(
         &self,
-        original_message: &Vec<u8>,
-        original_attestation: &Vec<u8>,
-        new_message_body: &Vec<u8>,
+        original_message: Bytes,
+        original_attestation: Bytes,
+        new_message_body: Bytes,
         new_destination_caller: Pubkey,
     ) {
         // todo: verify attestation signatures
@@ -136,10 +137,10 @@ impl MessageTransmitter {
             new_message_body,
         );
     }
-    pub fn receive_message(&mut self, data: &Vec<u8>, attestation: &Vec<u8>) {
+    pub fn receive_message(&mut self, data: Bytes, attestation: Bytes) {
         self.require_not_paused();
         // todo: verify attestations and check that the threshold is met
-        let message: Message = Message::new(self.version.get().unwrap(), data);
+        let message: Message = Message::new(self.version.get().unwrap(), &data);
         assert_eq!(message.version(), self.version.get().unwrap());
         let token_messenger_minter_contract: TokenMessengerMinterContractRef =
             TokenMessengerMinterContractRef::new(
@@ -159,8 +160,9 @@ impl MessageTransmitter {
         token_messenger_minter_contract.handle_receive_message(
             source_domain,
             sender,
-            &message_body.to_vec(),
+            Bytes::from(message_body.to_vec()),
         );
+
         self.env().emit_event(MessageReceived {
             caller: generic_address(self.env().caller()),
             source_domain,
@@ -226,7 +228,7 @@ impl MessageTransmitter {
         destination_caller: Pubkey,
         sender: GenericAddress,
         nonce: u64,
-        message_body: &Vec<u8>,
+        message_body: Bytes,
     ) {
         assert_ne!(recipient, [0u8; 32]);
         // Validate message body length
@@ -239,7 +241,7 @@ impl MessageTransmitter {
             &sender,
             &recipient,
             &destination_caller,
-            message_body,
+            &message_body.to_vec(),
         );
         let message: Message = Message::new(self.version.get().unwrap(), &message_body);
         self.env().emit_event(MessageSent {

@@ -23,6 +23,7 @@ pub mod storage;
 use message::Message;
 
 use crate::token_messenger_minter::TokenMessengerMinterContractRef;
+use errors::Error;
 use tiny_keccak::Keccak;
 
 #[odra::module]
@@ -154,7 +155,7 @@ impl MessageTransmitter {
         let sender: [u8; 32] = message.sender();
         let message_body: &[u8] = message.message_body();
 
-        assert_eq!(self.used_nonces.is_used_nonce(hashed_nonce), false);
+        assert!(!self.used_nonces.is_used_nonce(hashed_nonce));
         self.used_nonces.use_nonce(hashed_nonce);
 
         token_messenger_minter_contract.handle_receive_message(
@@ -186,7 +187,7 @@ impl MessageTransmitter {
     pub fn accept_ownership(&mut self) {
         let pending_owner = self.pending_owner.get().unwrap().unwrap();
         if self.env().caller() != pending_owner {
-            todo!("Throw a meaningful error")
+            self.env().revert(Error::InsufficientRights)
         }
         self.owner.set(pending_owner);
         self.pending_owner.set(None);
@@ -212,13 +213,13 @@ impl MessageTransmitter {
         self.attesters.disable_attester(attester);
     }
     fn require_not_paused(&self) {
-        if self.paused.get().unwrap() == true {
-            todo!("Throw a meaningful error")
+        if self.paused.get().unwrap() {
+            self.env().revert(Error::ContractIsPaused)
         }
     }
     fn require_owner(&self) {
         if self.env().caller() != self.owner.get().unwrap() {
-            todo!("Throw a meaningful error")
+            self.env().revert(Error::InsufficientRights)
         }
     }
     fn _send_message(
@@ -243,7 +244,7 @@ impl MessageTransmitter {
             &destination_caller,
             &message_body.to_vec(),
         );
-        let message: Message = Message::new(self.version.get().unwrap(), &message_body);
+        let message: Message = Message::new(self.version.get().unwrap(), message_body);
         self.env().emit_event(MessageSent {
             message: message.data.to_vec(),
         });

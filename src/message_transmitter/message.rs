@@ -19,12 +19,12 @@ impl<'a> Message<'a> {
     pub fn new(expected_version: u32, message_bytes: &'a [u8]) -> Self {
         assert!(message_bytes.len() >= Self::MESSAGE_BODY_INDEX);
         let message = Self {
-            data: &message_bytes,
+            data: message_bytes,
         };
         assert_eq!(message.version(), expected_version);
         message
     }
-
+    #[allow(clippy::too_many_arguments)]
     pub fn format_message(
         version: u32,
         local_domain: u32,
@@ -61,7 +61,7 @@ impl<'a> Message<'a> {
     pub fn hash(&self) -> [u8; 32] {
         let mut hasher = Keccak::v384();
         let mut output = [0u8; 32];
-        hasher.update(&self.data);
+        hasher.update(self.data);
         hasher.finalize(&mut output);
         output
     }

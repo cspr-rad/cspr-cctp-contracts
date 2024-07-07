@@ -28,6 +28,7 @@ pub mod storage;
 
 use crate::message_transmitter::MessageTransmitterContractRef;
 use crate::stablecoin::StablecoinContractRef;
+use errors::Error;
 use storage::RemoteTokenMessengers;
 
 #[odra::module]
@@ -109,8 +110,8 @@ impl TokenMessengerMinter {
                 self.local_message_transmitter.get().unwrap(),
             );
         local_message_transmitter.replace_message(
-            Bytes::from(original_message.clone()),
-            Bytes::from(original_attestation.clone()),
+            original_message.clone(),
+            original_attestation.clone(),
             Bytes::from(new_burn_message_body),
             new_destination_caller,
         );
@@ -126,12 +127,7 @@ impl TokenMessengerMinter {
         })
     }
 
-    pub fn handle_receive_message(
-        &self,
-        remote_domain: u32,
-        sender: Pubkey,
-        message_body: Bytes,
-    ) {
+    pub fn handle_receive_message(&self, remote_domain: u32, sender: Pubkey, message_body: Bytes) {
         self.require_local_message_transmitter();
         // remote sender must be remote token messenger
         assert_eq!(
@@ -161,7 +157,7 @@ impl TokenMessengerMinter {
     pub fn accept_ownership(&mut self) {
         let pending_owner = self.pending_owner.get().unwrap().unwrap();
         if self.env().caller() != pending_owner {
-            todo!("Throw a meaningful error")
+            self.env().revert(Error::InsufficientRights)
         }
         self.owner.set(pending_owner);
         self.pending_owner.set(None);
@@ -241,7 +237,6 @@ impl TokenMessengerMinter {
         // This will work for both Address::Account and Address::ContractHash, since the first byte is dropped by the accounting
         // logic of the stablecoin.
         stable_coin_contract.mint(&generic_address_to_account_address(to), U256::from(amount));
-        // todo: emit event
         local_token
     }
     fn burn(&self, burn_token: Address, burn_amount: U256) {
@@ -306,34 +301,32 @@ impl TokenMessengerMinter {
                     .unwrap_or_revert(&self.env()),
             );
         if destination_caller == [0u8; 32] {
-            return local_message_transmitter.send_message(
+            local_message_transmitter.send_message(
                 destination_domain,
                 destination_token_messenger,
-                Bytes::from(burn_message.clone()),
-            );
+                burn_message.clone())
         } else {
-            return local_message_transmitter.send_message_with_caller(
+            local_message_transmitter.send_message_with_caller(
                 destination_domain,
                 destination_token_messenger,
-                Bytes::from(burn_message.clone()),
-                destination_caller,
-            );
+                burn_message.clone(),
+                destination_caller)
         }
     }
 
     fn require_not_paused(&self) {
-        if self.paused.get().unwrap() == true {
-            todo!("Throw a meaningful error")
+        if self.paused.get().unwrap() {
+            self.env().revert(Error::ContractIsPaused)
         }
     }
     fn require_owner(&self) {
         if self.env().caller() != self.owner.get().unwrap() {
-            todo!("Throw a meaningful error")
+            self.env().revert(Error::InsufficientRights)
         }
     }
     fn require_local_message_transmitter(&self) {
         if self.env().caller() != self.local_message_transmitter.get().unwrap() {
-            todo!("Throw a meaningful error")
+            self.env().revert(Error::InsufficientRights)
         }
     }
 }

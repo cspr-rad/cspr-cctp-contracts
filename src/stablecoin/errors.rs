@@ -1,7 +1,7 @@
-/// Error enum for the CEP-18 contract.
+/// Error enum for the Stablecoin contract.
 #[odra::odra_error]
 pub enum Error {
-    /// CEP-18 contract called from within an invalid context.
+    /// Stablecoin contract called from within an invalid context.
     InvalidContext = 60000,
     /// Spender does not have enough balance.
     InsufficientBalance = 60001,

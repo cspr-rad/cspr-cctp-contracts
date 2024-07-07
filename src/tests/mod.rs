@@ -1,19 +1,30 @@
 #[cfg(test)]
 mod test_setup {
-    use crate::{generic_address, generic_address_to_contract_address};
-    use crate::{message_transmitter::message::Message, token_messenger_minter::burn_message::BurnMessage};
     use crate::message_transmitter::{MessageTransmitterHostRef, MessageTransmitterInitArgs};
     use crate::stablecoin::StablecoinHostRef;
     use crate::stablecoin::StablecoinInitArgs;
     use crate::token_messenger_minter::{
-        TokenMessengerMinterHostRef, TokenMessengerMinterInitArgs
+        TokenMessengerMinterHostRef, TokenMessengerMinterInitArgs,
+    };
+    use crate::{generic_address, generic_address_to_contract_address};
+    use crate::{
+        message_transmitter::message::Message, token_messenger_minter::burn_message::BurnMessage,
     };
     use odra::casper_types::bytesrepr::Bytes;
     use odra::host::Deployer;
     use odra::host::HostEnv;
     use odra::{Address, Addressable};
 
-    fn setup_cctp_contracts() -> (HostEnv, StablecoinHostRef, MessageTransmitterHostRef, TokenMessengerMinterHostRef, Address, Address, Address, Address){
+    fn setup_cctp_contracts() -> (
+        HostEnv,
+        StablecoinHostRef,
+        MessageTransmitterHostRef,
+        TokenMessengerMinterHostRef,
+        Address,
+        Address,
+        Address,
+        Address,
+    ) {
         let env = odra_test::env();
         let owner = env.get_account(0);
         let master_minter = env.get_account(1);
@@ -29,8 +40,7 @@ mod test_setup {
             blacklister,
             modality: Some(crate::stablecoin::utils::StablecoinModality::MintAndBurn),
         };
-        let stablecoin: StablecoinHostRef =
-            StablecoinHostRef::deploy(&env, stablecoin_init_args);
+        let stablecoin: StablecoinHostRef = StablecoinHostRef::deploy(&env, stablecoin_init_args);
 
         let message_transmitter_init_args = MessageTransmitterInitArgs {
             local_domain: 31u32,
@@ -51,11 +61,29 @@ mod test_setup {
         let token_messenger_minter: TokenMessengerMinterHostRef =
             TokenMessengerMinterHostRef::deploy(&env, token_messenger_minter_init_args);
 
-        (env, stablecoin, message_transmitter, token_messenger_minter, owner, master_minter, blacklister, controller)
+        (
+            env,
+            stablecoin,
+            message_transmitter,
+            token_messenger_minter,
+            owner,
+            master_minter,
+            blacklister,
+            controller,
+        )
     }
     #[test]
-    fn test_deposit_for_burn(){
-        let (env, mut stablecoin, message_transmitter, mut token_messenger_minter, owner, master_minter, .., controller) = setup_cctp_contracts();
+    fn test_deposit_for_burn() {
+        let (
+            env,
+            mut stablecoin,
+            message_transmitter,
+            mut token_messenger_minter,
+            owner,
+            master_minter,
+            ..,
+            controller,
+        ) = setup_cctp_contracts();
         let fake_minter = env.get_account(4);
         let user = env.get_account(5);
         env.set_caller(master_minter);
@@ -87,10 +115,19 @@ mod test_setup {
     }
 
     #[test]
-    fn test_receive_message_from_remote_domain(){
-        let (env, mut stablecoin, mut message_transmitter, mut token_messenger_minter, owner, master_minter, .., controller) = setup_cctp_contracts();
-        let remote_token_address: [u8; 32] = [10u8;32];
-        let remote_token_messenger: [u8;32] = [11u8;32];
+    fn test_receive_message_from_remote_domain() {
+        let (
+            env,
+            mut stablecoin,
+            mut message_transmitter,
+            mut token_messenger_minter,
+            owner,
+            master_minter,
+            ..,
+            controller,
+        ) = setup_cctp_contracts();
+        let remote_token_address: [u8; 32] = [10u8; 32];
+        let remote_token_messenger: [u8; 32] = [11u8; 32];
         let remote_domain: u32 = 0;
         let mint_recipient: Address = env.get_account(0);
         env.set_caller(master_minter);
@@ -100,9 +137,28 @@ mod test_setup {
         env.set_caller(owner);
         // message sender must be a remote_token_messenger
         token_messenger_minter.add_remote_token_messenger(remote_domain, remote_token_messenger);
-        token_messenger_minter.link_token_pair(*stablecoin.address(), remote_token_address, remote_domain);
-        let message_body: Vec<u8> = BurnMessage::format_message(2, &remote_token_address, &generic_address(mint_recipient), 10, &remote_token_messenger);
-        let message: Vec<u8> = Message::format_message(2, remote_domain, 32, 0, &remote_token_messenger, &generic_address(token_messenger_minter.address().clone()), &[0u8;32], &message_body);
+        token_messenger_minter.link_token_pair(
+            *stablecoin.address(),
+            remote_token_address,
+            remote_domain,
+        );
+        let message_body: Vec<u8> = BurnMessage::format_message(
+            2,
+            &remote_token_address,
+            &generic_address(mint_recipient),
+            10,
+            &remote_token_messenger,
+        );
+        let message: Vec<u8> = Message::format_message(
+            2,
+            remote_domain,
+            32,
+            0,
+            &remote_token_messenger,
+            &generic_address(token_messenger_minter.address().clone()),
+            &[0u8; 32],
+            &message_body,
+        );
         let message_typed: Message = Message::new(2, &message);
         let message_recipient = message_typed.recipient();
         let message_recipient_address = generic_address_to_contract_address(message_recipient);

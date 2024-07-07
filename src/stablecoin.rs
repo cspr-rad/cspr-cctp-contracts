@@ -246,12 +246,12 @@ impl Stablecoin {
         }
         let minter_allowance: U256 = self
             .minter_allowances
-            .get_or_default(&generic_address(*&self.caller()));
-        if &minter_allowance < &amount {
+            .get_or_default(&generic_address(self.caller()));
+        if minter_allowance < amount {
             self.env().revert(Error::InsufficientMinterAllowance);
         }
         self.minter_allowances
-            .subtract(&generic_address(*&self.caller()), amount);
+            .subtract(&generic_address(self.caller()), amount);
         // must check spender allowance
         let allowance = self.allowance(&account, &self.caller());
         if allowance < amount {
@@ -275,12 +275,12 @@ impl Stablecoin {
         self.assert_burn_and_mint_enabled();
         let minter_allowance: U256 = self
             .minter_allowances
-            .get_or_default(&generic_address(*&self.caller()));
-        if &minter_allowance < &amount {
+            .get_or_default(&generic_address(self.caller()));
+        if minter_allowance < amount {
             self.env().revert(Error::InsufficientMinterAllowance);
         }
         self.minter_allowances
-            .subtract(&generic_address(*&self.caller()), amount);
+            .subtract(&generic_address(self.caller()), amount);
         self.raw_mint(owner, &amount);
     }
 
@@ -326,7 +326,7 @@ impl Stablecoin {
         self.roles.revoke_role(
             &Roles::Blacklister,
             &generic_address(
-                *&self
+                self
                     .blacklister
                     .get()
                     // borrow checker is unhappy if we unwrap_or_revert() here.
@@ -391,7 +391,7 @@ impl Stablecoin {
             .configure_role(&Roles::Controller, &generic_address(*controller));
         self.roles
             .configure_role(&Roles::Minter, &generic_address(*minter));
-        self.controllers.set(&controller, *minter);
+        self.controllers.set(controller, *minter);
         self.env().emit_event(ControllerConfigured {
             controller: generic_address(*controller),
             minter: generic_address(*minter),
@@ -462,13 +462,13 @@ impl Stablecoin {
     }
 
     fn require_role(&mut self, account: &Address, role: &Role) {
-        if !self.roles.has_role(&role, &generic_address(*account)) {
+        if !self.roles.has_role(role, &generic_address(*account)) {
             self.env().revert(Error::InsufficientRights);
         }
     }
 
     fn require_not_role(&mut self, account: &Address, role: &Role) {
-        if self.roles.has_role(&role, &generic_address(*account)) {
+        if self.roles.has_role(role, &generic_address(*account)) {
             self.env().revert(Error::InsufficientRights)
         }
     }
@@ -476,7 +476,7 @@ impl Stablecoin {
     // Get the minter that is associated with the controller
     fn get_associated_minter(&mut self, controller: &Address) -> Address {
         self.controllers
-            .get(&controller)
+            .get(controller)
             .unwrap_or_revert_with(&self.env(), Error::MissingController)
     }
 

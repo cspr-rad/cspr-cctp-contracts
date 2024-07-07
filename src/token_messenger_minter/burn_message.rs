@@ -20,7 +20,7 @@ impl<'a> BurnMessage<'a> {
     pub fn new(expected_version: u32, message_bytes: &'a [u8]) -> Self {
         assert_eq!(message_bytes.len(), Self::BURN_MESSAGE_LEN);
         let burn_message = Self {
-            data: &message_bytes,
+            data: message_bytes,
         };
         assert_eq!(burn_message.version(), expected_version);
         burn_message

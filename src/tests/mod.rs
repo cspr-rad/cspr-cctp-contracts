@@ -11,6 +11,7 @@ mod test_setup {
         message_transmitter::message::Message, token_messenger_minter::burn_message::BurnMessage,
     };
     use odra::casper_types::bytesrepr::Bytes;
+    use odra::casper_types::U256;
     use odra::host::Deployer;
     use odra::host::HostEnv;
     use odra::{Address, Addressable};
@@ -56,6 +57,7 @@ mod test_setup {
         let token_messenger_minter_init_args = TokenMessengerMinterInitArgs {
             version: 2u32,
             local_message_transmitter: *message_transmitter.address(),
+            max_burn_amount_per_message: U256::from(100),
             owner,
         };
         let token_messenger_minter: TokenMessengerMinterHostRef =

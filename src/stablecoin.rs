@@ -326,8 +326,7 @@ impl Stablecoin {
         self.roles.revoke_role(
             &Roles::Blacklister,
             &generic_address(
-                self
-                    .blacklister
+                self.blacklister
                     .get()
                     // borrow checker is unhappy if we unwrap_or_revert() here.
                     .unwrap(),

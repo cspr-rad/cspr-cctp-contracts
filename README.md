@@ -6,16 +6,30 @@
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
+| local_domain | u32 | The identifier of the local chain |
+| version | u32 | The version of the MessageTransmitter Contract |
+| max_message_body_size | u256 | The maximum size of a CCTP Message body |
+| next_available_nonce | u64 | The starting nonce of this MessageTransmitter |
+| signature_threshold | u32 | The initial attestation threshold for this MessageTransmitter |
+| owner | Address | Casper Address of the MessageTransmitter owner |
+
 
 `send_message`
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
+| destination_domain | u32 | The identifier of the remote chain |
+| recipient | [u8;32] | Chain-agnostic remote address of the recipient TokenMessengerMinter |
+| message_body | Bytes | Casper-typed Bytes of the message body |
 
 `send_message_with_caller`
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
+| destination_domain | u32 | The identifier of the remote chain |
+| recipient | [u8;32] | Chain-agnostic remote address of the recipient MessageTransmitter |
+| message_body | Bytes | Casper-typed Bytes of the message body |
+| destination_caller | [u8;32] | Specific instance of MessageTransmitter that is allowed to process this message |
 
 `replace_message`
 

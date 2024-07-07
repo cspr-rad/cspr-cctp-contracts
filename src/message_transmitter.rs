@@ -143,6 +143,10 @@ impl MessageTransmitter {
         // todo: verify attestations and check that the threshold is met
         let message: Message = Message::new(self.version.get().unwrap(), &data);
         assert_eq!(message.version(), self.version.get().unwrap());
+        let destination_caller: [u8; 32] = message.destination_caller();
+        if destination_caller != [0u8;32] && destination_caller != generic_address(self.env().self_address()){
+            self.env().revert(Error::InvalidMessageRecipient)
+        }
         let token_messenger_minter_contract: TokenMessengerMinterContractRef =
             TokenMessengerMinterContractRef::new(
                 self.env(),

@@ -37,6 +37,7 @@ pub struct TokenMessengerMinter {
     paused: Var<bool>,
     local_message_transmitter: Var<Address>,
     remote_token_messengers: SubModule<RemoteTokenMessengers>,
+    max_burn_amount_per_message: Var<U256>,
     owner: Var<Address>,
     pending_owner: Var<Option<Address>>,
     linked_token_pairs: Mapping<(u32, Pubkey), Option<Address>>,
@@ -45,11 +46,19 @@ pub struct TokenMessengerMinter {
 #[odra::module]
 impl TokenMessengerMinter {
     #[allow(clippy::too_many_arguments)]
-    pub fn init(&mut self, version: u32, local_message_transmitter: Address, owner: Address) {
+    pub fn init(
+        &mut self,
+        version: u32,
+        local_message_transmitter: Address,
+        max_burn_amount_per_message: U256,
+        owner: Address,
+    ) {
         self.version.set(version);
         self.paused.set(false);
         self.local_message_transmitter
             .set(local_message_transmitter);
+        self.max_burn_amount_per_message
+            .set(max_burn_amount_per_message);
         self.owner.set(owner);
         self.pending_owner.set(None);
     }
@@ -143,6 +152,7 @@ impl TokenMessengerMinter {
         let mint_recipient: GenericAddress = burn_message.mint_recipient();
         let burn_token: Pubkey = burn_message.burn_token();
         let amount: u64 = burn_message.amount();
+        assert!(U256::from(amount) <= self.max_burn_amount_per_message.get().unwrap());
         let mint_token = self.mint(remote_domain, burn_token, mint_recipient, amount);
         self.env().emit_event(MintAndWithdraw {
             mint_recipient,
@@ -217,7 +227,10 @@ impl TokenMessengerMinter {
         self.require_owner();
         self.paused.set(false);
     }
-    pub fn set_max_burn_amount_per_message(&self) {}
+    pub fn set_max_burn_amount_per_message(&mut self, amount: U256) {
+        self.require_owner();
+        self.max_burn_amount_per_message.set(amount);
+    }
     // Mint get_local_token(burn_token) on the Casper domain
     fn mint(
         &self,
@@ -304,13 +317,15 @@ impl TokenMessengerMinter {
             local_message_transmitter.send_message(
                 destination_domain,
                 destination_token_messenger,
-                burn_message.clone())
+                burn_message.clone(),
+            )
         } else {
             local_message_transmitter.send_message_with_caller(
                 destination_domain,
                 destination_token_messenger,
                 burn_message.clone(),
-                destination_caller)
+                destination_caller,
+            )
         }
     }
 

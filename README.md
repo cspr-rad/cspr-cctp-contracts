@@ -75,21 +75,18 @@ Casper uses an `Address` type that wraps `Contract` and `User` addresses. In ord
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| NaN | NaN | NaN |
 *This Ep does not take any arguments*
 
 `pause`
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| NaN | NaN | NaN |
 *This Ep does not take any arguments*
 
 `unpause`
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| NaN | NaN | NaN |
 *This Ep does not take any arguments*
 
 `is_used_nonce`

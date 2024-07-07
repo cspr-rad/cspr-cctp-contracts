@@ -103,12 +103,13 @@ Casper uses an `Address` type that wraps `Contract` and `User` addresses. In ord
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| new_attester | [u8;32] | 
+| new_attester | [u8;32] | The Chain-agnostic Address of the new Attester (=some PublicKey) |
 
 `disable_attester`
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
+| attester | [u8;32] | The Chain-agnostic Address of the new Attester (=some PublicKey) |
 
 
 # TokenMessengerMinter Smart Contract

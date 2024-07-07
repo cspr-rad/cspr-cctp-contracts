@@ -6,7 +6,7 @@ mod test_setup {
     use crate::stablecoin::StablecoinHostRef;
     use crate::stablecoin::StablecoinInitArgs;
     use crate::token_messenger_minter::{
-        burn_message, TokenMessengerMinterHostRef, TokenMessengerMinterInitArgs
+        TokenMessengerMinterHostRef, TokenMessengerMinterInitArgs
     };
     use odra::casper_types::bytesrepr::Bytes;
     use odra::host::Deployer;
@@ -29,7 +29,7 @@ mod test_setup {
             blacklister,
             modality: Some(crate::stablecoin::utils::StablecoinModality::MintAndBurn),
         };
-        let mut stablecoin: StablecoinHostRef =
+        let stablecoin: StablecoinHostRef =
             StablecoinHostRef::deploy(&env, stablecoin_init_args);
 
         let message_transmitter_init_args = MessageTransmitterInitArgs {
@@ -40,7 +40,7 @@ mod test_setup {
             signature_threshold: 1u32,
             owner,
         };
-        let mut message_transmitter: MessageTransmitterHostRef =
+        let message_transmitter: MessageTransmitterHostRef =
             MessageTransmitterHostRef::deploy(&env, message_transmitter_init_args);
 
         let token_messenger_minter_init_args = TokenMessengerMinterInitArgs {
@@ -48,14 +48,14 @@ mod test_setup {
             local_message_transmitter: *message_transmitter.address(),
             owner,
         };
-        let mut token_messenger_minter: TokenMessengerMinterHostRef =
+        let token_messenger_minter: TokenMessengerMinterHostRef =
             TokenMessengerMinterHostRef::deploy(&env, token_messenger_minter_init_args);
 
         (env, stablecoin, message_transmitter, token_messenger_minter, owner, master_minter, blacklister, controller)
     }
     #[test]
     fn test_deposit_for_burn(){
-        let (env, mut stablecoin, message_transmitter, mut token_messenger_minter, owner, master_minter, blacklister, controller) = setup_cctp_contracts();
+        let (env, mut stablecoin, message_transmitter, mut token_messenger_minter, owner, master_minter, .., controller) = setup_cctp_contracts();
         let fake_minter = env.get_account(4);
         let user = env.get_account(5);
         env.set_caller(master_minter);
@@ -80,11 +80,15 @@ mod test_setup {
             env.emitted(token_messenger_minter.address(), "DepositForBurn"),
             "DepositForBurn event not emitted"
         );
+        assert!(
+            env.emitted(message_transmitter.address(), "MessageSent"),
+            "MessageSent event not emitted"
+        )
     }
 
     #[test]
     fn test_receive_message_from_remote_domain(){
-        let (env, mut stablecoin, mut message_transmitter, mut token_messenger_minter, owner, master_minter, blacklister, controller) = setup_cctp_contracts();
+        let (env, mut stablecoin, mut message_transmitter, mut token_messenger_minter, owner, master_minter, .., controller) = setup_cctp_contracts();
         let remote_token_address: [u8; 32] = [10u8;32];
         let remote_token_messenger: [u8;32] = [11u8;32];
         let remote_domain: u32 = 0;

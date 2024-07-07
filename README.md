@@ -106,7 +106,7 @@ Casper uses an `Address` type that wraps `Contract` and `User` addresses. In ord
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| attester | [u8;32] | The Chain-agnostic Address of the new Attester (=some PublicKey) |
+| attester | [u8;32] | The Chain-agnostic Address of the deprecated Attester (=some PublicKey) |
 
 
 # TokenMessengerMinter Smart Contract
@@ -115,21 +115,36 @@ Casper uses an `Address` type that wraps `Contract` and `User` addresses. In ord
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
+| version | u32 | The version of the TokenMessengerMinter Contract |
+| local_message_transmitter | Address | The Casper Address of the local MessageTransmitter contract |
+| max_burn_amount_per_message | U256 | The maximum amount that can be burned per cctp message |
 
 `deposit_for_burn`
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
+| amount | u64 | The amount to be deposited and burned |
+| destination_domain | u32 | The identifier of the remote chain |
+| mint_recipient | [u8;32] | Chain-agnostic address of the remote mint recipient, e.g. an Ethereum PublicKey| 
 
 `deposit_for_burn_with_caller`
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
+| amount | u64 | The amount to be deposited and burned |
+| destination_domain | u32 | The identifier of the remote chain |
+| mint_recipient | [u8;32] | Chain-agnostic address of the remote mint recipient, e.g. an Ethereum PublicKey|
+| destination_caller | [u8;32] | Specific instance of MessageTransmitter that is allowed to process this message |
+
 
 `replace_deposit_for_burn`
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
+| original_message | Bytes | Casper-wrapped Bytes of the original message |
+| original_attestation | Bytes | Casper-wrapped Bytes of the original message's attestation |
+| new_destination_caller | [u8;32] | Specific instance of MessageTransmitter that is allowed to process the new message |
+| new_mint_recipient | [u8;32] | Chain-agnostic address of the new mint recipient |
 
 `handle_receive_message`
 

@@ -150,52 +150,67 @@ Casper uses an `Address` type that wraps `Contract` and `User` addresses. In ord
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
+| remote_domain | u32 | The identifier of the remote chain |
+| sender | [u8;32] | Chain-agnostic address of the MessageTransmitter that sent this message |
+| message_body | Bytes | Casper Bytes of the message body, e.g. a formatted BurnMessage |
 
 `transfer_ownership`
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
+| new_pending_owner | Address | Casper Address of the pending owner account |
 
 `accept_ownership`
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
+*This Ep does not take any arguments*
 
 `add_remote_token_messenger`
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
+| domain | u32 | The identifier of the chain where the new TokenMessengerMinter lives |
+| remote_token_messenger | [u8;32] | Chain-agnostic Address of the new remote TokenMessengerMinter |
 
 `remove_remote_token_messenger`
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
+| domain | u32 | The identifier of the chain where the deprecated TokenMessengerMinter lives |
 
 `link_token_pair`
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
+| local_token | Address | Casper Address of the local token contract, e.g. Stablecoin |
+| remote_token | [u8;32] | Chain-agnostic Address of the remote token, e.g. SOLUSDC |
+| domain | u32 | The identifier of the chain where the remote Token lives |
 
 `unlink_token_pair`
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
+| remote_token | [u8;32] | Chain-agnostic Address of the remote token, e.g. SOLUSDC |
+| domain | u32 | The identifier of the chain where the remote Token lives |
 
 `pause`
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
+*This Ep does not take any arguments*
 
 `unpause`
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
+*This Ep does not take any arguments*
 
 `set_max_burn_amount_per_message`
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-
+| amount | U256 | The new maximum amount a single CCTP message can burn |
 
 ## Usage
 It's recommended to install 

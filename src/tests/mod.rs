@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod test_setup {
-    use crate::generic_address;
+    use crate::{generic_address, generic_address_to_contract_address};
     use crate::{message_transmitter::message::Message, token_messenger_minter::burn_message::BurnMessage};
     use crate::message_transmitter::{MessageTransmitterHostRef, MessageTransmitterInitArgs};
     use crate::stablecoin::StablecoinHostRef;
@@ -98,7 +98,15 @@ mod test_setup {
         token_messenger_minter.add_remote_token_messenger(remote_domain, remote_token_messenger);
         token_messenger_minter.link_token_pair(*stablecoin.address(), remote_token_address, remote_domain);
         let message_body: Vec<u8> = BurnMessage::format_message(2, &remote_token_address, &generic_address(mint_recipient), 10, &remote_token_messenger);
-        let message: Vec<u8> = Message::format_message(2, remote_domain, 32, 0, &remote_token_messenger, &generic_address(mint_recipient), &[0u8;32], &message_body);
+        let message: Vec<u8> = Message::format_message(2, remote_domain, 32, 0, &remote_token_messenger, &generic_address(token_messenger_minter.address().clone()), &[0u8;32], &message_body);
+        let message_typed: Message = Message::new(2, &message);
+        let message_recipient = message_typed.recipient();
+        let message_recipient_address = generic_address_to_contract_address(message_recipient);
+        assert_eq!(&message_recipient_address, token_messenger_minter.address());
         message_transmitter.receive_message(Bytes::from(message), Bytes::from(vec![]));
+        assert!(
+            env.emitted(message_transmitter.address(), "MessageReceived"),
+            "MessageReceived event not emitted"
+        );
     }
 }

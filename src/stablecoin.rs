@@ -225,43 +225,32 @@ impl Stablecoin {
     pub fn burn(&mut self, amount: U256, account: Address) {
         self.assert_burn_and_mint_enabled();
         self.require_not_role(&self.caller(), &Roles::Blacklisted);
-        if self.env().caller() == account {
-            if self.env().caller() != account {
-                self.env().revert(Error::InvalidBurnTarget);
-            }
-
-            if self.balance_of(&account) < amount {
-                self.env().revert(Error::InsufficientBalance);
-            }
-        } else {
-            self.require_role(&self.caller(), &Roles::Minter);
-            if amount == U256::zero() {
-                self.env().revert(Error::InvalidAmount)
-            }
-            let minter_allowance: U256 = self
-                .minter_allowances
-                .get_or_default(&generic_address(self.caller()));
-            if minter_allowance < amount {
-                self.env().revert(Error::InsufficientMinterAllowance);
-            }
-            self.minter_allowances
-                .subtract(&generic_address(self.caller()), amount);
-            // must check spender allowance
-            let allowance = self.allowance(&account, &self.caller());
-            if allowance < amount {
-                self.env().revert(Error::InsufficientAllowance);
-            }
-            self.allowances.set(
-                &generic_address(account),
-                &generic_address(self.caller()),
-                allowance
-                    .checked_sub(amount)
-                    .unwrap_or_revert_with(&self.env(), Error::InsufficientAllowance),
-            );
+        self.require_role(&self.caller(), &Roles::Minter);
+        if amount == U256::zero() {
+            self.env().revert(Error::InvalidAmount)
         }
+        let minter_allowance: U256 = self
+            .minter_allowances
+            .get_or_default(&generic_address(self.caller()));
+        if minter_allowance < amount {
+            self.env().revert(Error::InsufficientMinterAllowance);
+        }
+        self.minter_allowances
+            .subtract(&generic_address(self.caller()), amount);
+        // must check spender allowance
+        let allowance = self.allowance(&account, &self.caller());
+        if allowance < amount {
+            self.env().revert(Error::InsufficientAllowance);
+        }
+        self.allowances.set(
+            &generic_address(account),
+            &generic_address(self.caller()),
+            allowance
+                .checked_sub(amount)
+                .unwrap_or_revert_with(&self.env(), Error::InsufficientAllowance),
+        );
         self.raw_burn(&account, &amount);
     }
-
     /// Mints new tokens and assigns them to the given address.
     pub fn mint(&mut self, owner: &Address, amount: U256) {
         self.require_role(&self.caller(), &Roles::Minter);

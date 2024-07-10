@@ -233,8 +233,6 @@ impl Stablecoin {
             if self.balance_of(&account) < amount {
                 self.env().revert(Error::InsufficientBalance);
             }
-
-            self.raw_burn(&account, &amount);
         } else {
             self.require_role(&self.caller(), &Roles::Minter);
             if amount == U256::zero() {
@@ -260,9 +258,8 @@ impl Stablecoin {
                     .checked_sub(amount)
                     .unwrap_or_revert_with(&self.env(), Error::InsufficientAllowance),
             );
-            // problem: Odra does not support callstack traversal
-            self.raw_burn(&account, &amount);
         }
+        self.raw_burn(&account, &amount);
     }
 
     /// Mints new tokens and assigns them to the given address.

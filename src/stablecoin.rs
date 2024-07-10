@@ -1,4 +1,5 @@
 //! CEP-18 Casper Fungible Token standard implementation.
+use odra::casper_types::account;
 use odra::prelude::*;
 use odra::{casper_types::U256, Address, Mapping, SubModule, UnwrapOrRevert, Var};
 
@@ -222,50 +223,47 @@ impl Stablecoin {
     }
 
     /// Burns the given amount of tokens from the given address.
-    pub fn burn(&mut self, owner: &Address, amount: &U256) {
-        self.assert_burn_and_mint_enabled();
-
-        if self.env().caller() != *owner {
-            self.env().revert(Error::InvalidBurnTarget);
-        }
-
-        if self.balance_of(owner) < *amount {
-            self.env().revert(Error::InsufficientBalance);
-        }
-
-        self.raw_burn(owner, amount);
-    }
-
-    /// Burns the given amount of tokens from the given address.
-    pub fn burn_cctp(&mut self, amount: U256, account: Address) {
+    pub fn burn(&mut self, amount: U256, account: Address) {
         self.assert_burn_and_mint_enabled();
         self.require_not_role(&self.caller(), &Roles::Blacklisted);
-        self.require_role(&self.caller(), &Roles::Minter);
-        if amount == U256::zero() {
-            self.env().revert(Error::InvalidAmount)
+        if self.env().caller() == account {
+            if self.env().caller() != account {
+                self.env().revert(Error::InvalidBurnTarget);
+            }
+
+            if self.balance_of(&account) < amount {
+                self.env().revert(Error::InsufficientBalance);
+            }
+
+            self.raw_burn(&account, &amount);
+        } else {
+            self.require_role(&self.caller(), &Roles::Minter);
+            if amount == U256::zero() {
+                self.env().revert(Error::InvalidAmount)
+            }
+            let minter_allowance: U256 = self
+                .minter_allowances
+                .get_or_default(&generic_address(self.caller()));
+            if minter_allowance < amount {
+                self.env().revert(Error::InsufficientMinterAllowance);
+            }
+            self.minter_allowances
+                .subtract(&generic_address(self.caller()), amount);
+            // must check spender allowance
+            let allowance = self.allowance(&account, &self.caller());
+            if allowance < amount {
+                self.env().revert(Error::InsufficientAllowance);
+            }
+            self.allowances.set(
+                &generic_address(account),
+                &generic_address(self.caller()),
+                allowance
+                    .checked_sub(amount)
+                    .unwrap_or_revert_with(&self.env(), Error::InsufficientAllowance),
+            );
+            // problem: Odra does not support callstack traversal
+            self.raw_burn(&account, &amount);
         }
-        let minter_allowance: U256 = self
-            .minter_allowances
-            .get_or_default(&generic_address(self.caller()));
-        if minter_allowance < amount {
-            self.env().revert(Error::InsufficientMinterAllowance);
-        }
-        self.minter_allowances
-            .subtract(&generic_address(self.caller()), amount);
-        // must check spender allowance
-        let allowance = self.allowance(&account, &self.caller());
-        if allowance < amount {
-            self.env().revert(Error::InsufficientAllowance);
-        }
-        self.allowances.set(
-            &generic_address(account),
-            &generic_address(self.caller()),
-            allowance
-                .checked_sub(amount)
-                .unwrap_or_revert_with(&self.env(), Error::InsufficientAllowance),
-        );
-        // problem: Odra does not support callstack traversal
-        self.raw_burn(&account, &amount);
     }
 
     /// Mints new tokens and assigns them to the given address.

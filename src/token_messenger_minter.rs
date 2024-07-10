@@ -256,7 +256,7 @@ impl TokenMessengerMinter {
         self.require_not_paused();
         let mut stable_coin_contract: StablecoinContractRef =
             StablecoinContractRef::new(self.env(), burn_token);
-        stable_coin_contract.burn_cctp(burn_amount, self.env().caller());
+        stable_coin_contract.burn(burn_amount, self.env().caller());
     }
     fn _deposit_for_burn(
         &self,

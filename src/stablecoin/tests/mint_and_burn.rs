@@ -28,7 +28,7 @@ mod mint_and_burn_tests {
         cep18_token.mint(&minter_1, U256::from(10));
         cep18_token.env().set_caller(minter_1);
         assert!(env.emitted(&cep18_token, "Mint"), "Mint event not emitted");
-        cep18_token.burn(&minter_1, &U256::from(10));
+        cep18_token.burn(U256::from(10), minter_1);
         assert!(env.emitted(&cep18_token, "Burn"), "Burn event not emitted");
     }
 }

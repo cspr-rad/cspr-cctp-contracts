@@ -119,7 +119,7 @@ impl MessageTransmitter {
             data: &original_message,
         };
         let sender = original_msg.sender();
-        // Message must be replaced by the Transmitter that submitted the original message.
+        // Message must be replaced by the MessengerMinter that submitted the original message.
         assert_eq!(generic_address(self.env().caller()), sender);
         assert_eq!(
             original_msg.source_domain(),
@@ -144,7 +144,9 @@ impl MessageTransmitter {
         let message: Message = Message::new(self.version.get().unwrap(), &data);
         assert_eq!(message.version(), self.version.get().unwrap());
         let destination_caller: [u8; 32] = message.destination_caller();
-        if destination_caller != [0u8;32] && destination_caller != generic_address(self.env().self_address()){
+        if destination_caller != [0u8; 32]
+            && destination_caller != generic_address(self.env().self_address())
+        {
             self.env().revert(Error::InvalidMessageRecipient)
         }
         let token_messenger_minter_contract: TokenMessengerMinterContractRef =

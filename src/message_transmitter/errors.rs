@@ -3,5 +3,5 @@
 pub enum Error {
     InsufficientRights = 50000,
     ContractIsPaused = 50001,
-    InvalidMessageRecipient = 50002
+    InvalidMessageRecipient = 50002,
 }

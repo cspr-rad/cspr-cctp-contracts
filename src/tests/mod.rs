@@ -177,7 +177,7 @@ mod test_setup {
         let (
             env,
             mut stablecoin,
-            mut message_transmitter,
+            message_transmitter,
             mut token_messenger_minter,
             owner,
             master_minter,

@@ -110,6 +110,8 @@ impl TokenMessengerMinter {
         let burn_token: [u8; 32] = original_burn_msg.burn_token();
         let amount: u64 = original_burn_msg.amount();
         let sender: [u8; 32] = original_burn_msg.message_sender();
+        assert_eq!(generic_address(self.env().caller()), sender);
+        assert_ne!(new_mint_recipient, [0u8; 32]);
         let version: u32 = original_burn_msg.version();
         let new_burn_message_body: Vec<u8> =
             BurnMessage::format_message(version, &burn_token, &new_mint_recipient, amount, &sender);

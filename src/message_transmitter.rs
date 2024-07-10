@@ -115,16 +115,10 @@ impl MessageTransmitter {
     ) {
         // todo: verify attestation signatures
         // todo: validate message format
-        let original_msg = Message {
-            data: &original_message,
-        };
+        let original_msg: Message = Message::new(self.version.get().unwrap(), &original_message);
         let sender = original_msg.sender();
         // Message must be replaced by the MessengerMinter that submitted the original message.
         assert_eq!(generic_address(self.env().caller()), sender);
-        assert_eq!(
-            original_msg.source_domain(),
-            self.local_domain.get().unwrap()
-        );
         let destination_domain: u32 = original_msg.destination_domain();
         let recipient = original_msg.recipient();
         let nonce = original_msg.nonce();

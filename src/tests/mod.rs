@@ -205,7 +205,7 @@ mod test_setup {
             &remote_token_address,
             &generic_address(mint_recipient),
             10,
-            &remote_token_messenger,
+            &generic_address(owner),
         );
         let message: Vec<u8> = Message::format_message(
             2,

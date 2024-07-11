@@ -8,7 +8,7 @@ use odra::{
     prelude::*,
     Address, SubModule, Var,
 };
-use sha3::{digest::core_api::CoreWrapper, Digest, Keccak256, Keccak256Core};
+use sha3::{Digest, Keccak256};
 use storage::{Attesters, UsedNonces};
 
 use crate::generic_address_to_contract_address;
@@ -114,7 +114,7 @@ impl MessageTransmitter {
         new_destination_caller: GenericAddress,
     ) {
         let original_msg: Message = Message::new(self.version.get().unwrap(), &original_message);
-        let message_hasher = original_msg.hasher();
+        let message_hasher = &original_msg.hash();
         // verify original attestation
         self.verify_attestation_signatures(message_hasher, &original_attestation);
         let sender = original_msg.sender();
@@ -136,8 +136,7 @@ impl MessageTransmitter {
     pub fn receive_message(&mut self, data: Bytes, attestation: Bytes) {
         self.require_not_paused();
         let message: Message = Message::new(self.version.get().unwrap(), &data);
-        let message_hasher = message.hasher();
-        self.verify_attestation_signatures(message_hasher, attestation.as_ref());
+        self.verify_attestation_signatures(&message.hash(), attestation.as_ref());
         assert_eq!(message.version(), self.version.get().unwrap());
         let destination_caller: [u8; 32] = message.destination_caller();
         if destination_caller != [0u8; 32]
@@ -251,11 +250,7 @@ impl MessageTransmitter {
             message: message.data.to_vec(),
         });
     }
-    fn verify_attestation_signatures(
-        &self,
-        message_hasher: CoreWrapper<Keccak256Core>,
-        attestation: &[u8],
-    ) {
+    fn verify_attestation_signatures(&self, message_hash: &[u8; 32], attestation: &[u8]) {
         assert_eq!(
             attestation.len(),
             64 * self.signature_threshold.get().unwrap() as usize
@@ -264,7 +259,7 @@ impl MessageTransmitter {
         let mut last_attester: EthAddress = [0u8; 20];
         for signature in attestation.to_vec().chunks(SIGNATURE_LENGTH) {
             let pubkey_recovered: EthAddress =
-                recover_attester(message_hasher.clone(), signature.try_into().unwrap());
+                recover_attester(message_hash, signature.try_into().unwrap());
             assert!(pubkey_recovered > last_attester);
             assert!(self.attesters.is_attester(pubkey_recovered));
             valid_attestations += 1;
@@ -280,17 +275,17 @@ fn hash_nonce(nonce: u64, account: GenericAddress) -> [u8; 32] {
     hasher.finalize().as_slice().try_into().unwrap()
 }
 
-fn recover_attester(
-    message_hasher: CoreWrapper<Keccak256Core>,
-    signature: &[u8; SIGNATURE_LENGTH],
-) -> EthAddress {
-    let recid: RecoveryId = RecoveryId::try_from(1u8).unwrap();
+fn recover_attester(message_hash: &[u8; 32], signature: &[u8; SIGNATURE_LENGTH]) -> EthAddress {
+    let recovery_byte = signature[SIGNATURE_LENGTH - 1];
+    assert!((27..=30).contains(&recovery_byte));
+    let recovery_id = RecoveryId::from_byte(signature[SIGNATURE_LENGTH - 1] - 27u8).unwrap();
     let signature: [u8; SIGNATURE_LENGTH - 1] =
         signature[0..SIGNATURE_LENGTH - 1].try_into().unwrap();
-    let recovered_key = VerifyingKey::recover_from_digest(
-        message_hasher,
-        &Signature::from_bytes(&signature.into()).unwrap(),
-        recid,
+    // todo: refactor using recover_from_prehash
+    let recovered_key = VerifyingKey::recover_from_prehash(
+        message_hash,
+        &Signature::from_slice(&signature).unwrap(),
+        recovery_id,
     )
     .unwrap();
     recover_ethereum_address(
@@ -306,4 +301,28 @@ fn recover_ethereum_address(pubkey: [u8; 64]) -> EthAddress {
     hash.as_slice()[12..]
         .try_into()
         .expect("Failed to fit pubkey into slice")
+}
+
+#[test]
+fn test_recover_ethereum_key() {
+    use k256::ecdsa::{Signature, SigningKey};
+    let sk_bytes: [u8; 32] = [1; 32];
+    let message: [u8; 32] = [2; 32];
+    let mut hasher = Keccak256::new();
+    hasher.update(message);
+    let message_hash: [u8; 32] = hasher.finalize().as_slice().try_into().unwrap();
+    let sk = SigningKey::from_slice(&sk_bytes).unwrap();
+    let public_key = *sk.clone().verifying_key();
+    let (signature, recovery_id): (Signature, RecoveryId) =
+        sk.sign_prehash_recoverable(&message_hash).unwrap();
+    let mut signature_bytes = signature.to_bytes().to_vec();
+    signature_bytes.push(recovery_id.to_byte() + 27u8);
+    let attester = recover_attester(&message_hash, &signature_bytes.try_into().unwrap());
+    use alloy::primitives::Address;
+    let expected_attester: [u8; 20] = Address::from_public_key(&public_key)
+        .to_bytes()
+        .unwrap()
+        .try_into()
+        .unwrap();
+    assert_eq!(attester, expected_attester);
 }

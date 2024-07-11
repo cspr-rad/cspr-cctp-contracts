@@ -11,10 +11,10 @@ use odra::{
 use sha3::{Digest, Keccak256};
 use storage::{Attesters, UsedNonces};
 
-use crate::generic_address;
 use crate::generic_address_to_contract_address;
 use crate::GenericAddress;
 use crate::Pubkey;
+use crate::{generic_address, EthAddress};
 
 pub mod errors;
 pub mod events;
@@ -115,8 +115,8 @@ impl MessageTransmitter {
         let original_msg: Message = Message::new(self.version.get().unwrap(), &original_message);
         // verify original attestation
         for chunk in original_attestation.to_vec().chunks(64) {
-            let pubkey_recovered: [u8; 64] =
-                verify_attestation_signature(original_msg.hash(), chunk.try_into().unwrap());
+            let pubkey_recovered: EthAddress =
+                recover_attester(original_msg.hash(), chunk.try_into().unwrap());
             assert!(self.attesters.is_attester(pubkey_recovered));
         }
         let sender = original_msg.sender();
@@ -141,8 +141,8 @@ impl MessageTransmitter {
         let mut valid_attestations = 0;
         // todo: check ascending order
         for chunk in attestation.to_vec().chunks(64) {
-            let pubkey_recovered: [u8; 64] =
-                verify_attestation_signature(message.hash(), chunk.try_into().unwrap());
+            let pubkey_recovered: EthAddress =
+                recover_attester(message.hash(), chunk.try_into().unwrap());
             assert!(self.attesters.is_attester(pubkey_recovered));
             valid_attestations += 1;
         }
@@ -215,11 +215,11 @@ impl MessageTransmitter {
         let nonce_hashed = hash_nonce(nonce, account);
         self.used_nonces.is_used_nonce(nonce_hashed)
     }
-    pub fn enable_attester(&mut self, new_attester: [u8; 64]) {
+    pub fn enable_attester(&mut self, new_attester: EthAddress) {
         self.require_owner();
         self.attesters.enable_attester(new_attester);
     }
-    pub fn disable_attester(&mut self, attester: [u8; 64]) {
+    pub fn disable_attester(&mut self, attester: EthAddress) {
         self.require_owner();
         self.attesters.disable_attester(attester);
     }
@@ -267,7 +267,8 @@ fn hash_nonce(nonce: u64, account: GenericAddress) -> [u8; 32] {
     hasher.update(&account);
     hasher.finalize().as_slice().try_into().unwrap()
 }
-fn verify_attestation_signature(message_hash: [u8; 32], signature: [u8; 64]) -> [u8; 64] {
+
+fn recover_attester(message_hash: [u8; 32], signature: [u8; 64]) -> EthAddress {
     let recid: RecoveryId = RecoveryId::try_from(1u8).unwrap();
     let mut hasher = Keccak256::new();
     hasher.update(message_hash);
@@ -277,22 +278,20 @@ fn verify_attestation_signature(message_hash: [u8; 32], signature: [u8; 64]) -> 
         recid,
     )
     .unwrap();
-    recovered_key
-        .to_encoded_point(false)
-        .as_ref().split_at(1).1.try_into().expect("Failed to fit pubkey into slice")
-
+    recover_ethereum_address(
+        recovered_key.to_encoded_point(false).as_ref()[1..]
+            .try_into()
+            .expect("Failed to fit pubkey into slice"),
+    )
 }
-fn recover_ethereum_address(pubkey: [u8;64]) -> [u8; 20] {
+fn recover_ethereum_address(pubkey: [u8; 64]) -> EthAddress {
     let mut hasher = Keccak256::new();
     hasher.update(pubkey);
     let hash = hasher.finalize();
-    hash.as_slice()
-        .split_at(hash.len() - 20)
-        .1
+    hash.as_slice()[12..]
         .try_into()
         .expect("Failed to fit pubkey into slice")
 }
-
 
 #[test]
 fn test_pubkey_recovery() {
@@ -301,6 +300,5 @@ fn test_pubkey_recovery() {
     let mut sk =
         k256::ecdsa::SigningKey::from_slice(&[1; 32]).expect("Failed to construct SigningKey");
     let signature: Signature = sk.sign(&message_hash);
-    let _recovered_pubkey: [u8; 64] =
-        verify_attestation_signature(message_hash, signature.to_bytes().into());
+    recover_attester(message_hash, signature.to_bytes().into());
 }

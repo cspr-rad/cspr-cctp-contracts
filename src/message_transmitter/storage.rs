@@ -1,5 +1,7 @@
 use odra::{prelude::*, Mapping};
 
+use crate::EthAddress;
+
 #[odra::module()]
 /// Storage module for the allowances of the token.
 pub struct UsedNonces {
@@ -18,18 +20,18 @@ impl UsedNonces {
 
 #[odra::module()]
 pub struct Attesters {
-    attesters: Mapping<[u8; 64], bool>,
+    attesters: Mapping<EthAddress, bool>,
 }
 
 #[odra::module]
 impl Attesters {
-    pub fn enable_attester(&mut self, attester: [u8; 64]) {
+    pub fn enable_attester(&mut self, attester: EthAddress) {
         self.attesters.set(&attester, true);
     }
-    pub fn disable_attester(&mut self, attester: [u8; 64]) {
+    pub fn disable_attester(&mut self, attester: EthAddress) {
         self.attesters.set(&attester, false);
     }
-    pub fn is_attester(&self, attester: [u8; 64]) -> bool {
+    pub fn is_attester(&self, attester: EthAddress) -> bool {
         self.attesters.get(&attester).unwrap()
     }
 }

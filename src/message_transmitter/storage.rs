@@ -18,18 +18,18 @@ impl UsedNonces {
 
 #[odra::module()]
 pub struct Attesters {
-    attesters: Mapping<[u8; 33], bool>,
+    attesters: Mapping<[u8; 64], bool>,
 }
 
 #[odra::module]
 impl Attesters {
-    pub fn enable_attester(&mut self, attester: [u8; 33]) {
+    pub fn enable_attester(&mut self, attester: [u8; 64]) {
         self.attesters.set(&attester, true);
     }
-    pub fn disable_attester(&mut self, attester: [u8; 33]) {
+    pub fn disable_attester(&mut self, attester: [u8; 64]) {
         self.attesters.set(&attester, false);
     }
-    pub fn is_attester(&self, attester: [u8; 33]) -> bool {
+    pub fn is_attester(&self, attester: [u8; 64]) -> bool {
         self.attesters.get(&attester).unwrap()
     }
 }

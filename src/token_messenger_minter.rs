@@ -19,7 +19,6 @@ use crate::generic_address_to_account_address;
 use crate::generic_address_to_contract_address;
 use crate::message_transmitter::message::Message;
 use crate::GenericAddress;
-use crate::Pubkey;
 
 pub mod burn_message;
 pub mod errors;
@@ -40,7 +39,7 @@ pub struct TokenMessengerMinter {
     max_burn_amount_per_message: Var<U256>,
     owner: Var<Address>,
     pending_owner: Var<Option<Address>>,
-    linked_token_pairs: Mapping<(u32, Pubkey), Option<Address>>,
+    linked_token_pairs: Mapping<(u32, GenericAddress), Option<Address>>,
 }
 
 #[odra::module]
@@ -67,10 +66,10 @@ impl TokenMessengerMinter {
         &self,
         amount: u64,
         destination_domain: u32,
-        mint_recipient: Pubkey,
+        mint_recipient: GenericAddress,
         burn_token: Address,
     ) {
-        let destination_caller: Pubkey = [0u8; 32];
+        let destination_caller: GenericAddress = [0u8; 32];
         self._deposit_for_burn(
             amount,
             destination_domain,
@@ -84,9 +83,9 @@ impl TokenMessengerMinter {
         &self,
         amount: u64,
         destination_domain: u32,
-        mint_recipient: Pubkey,
+        mint_recipient: GenericAddress,
         burn_token: GenericAddress,
-        destination_caller: Pubkey,
+        destination_caller: GenericAddress,
     ) {
         self._deposit_for_burn(
             amount,
@@ -101,8 +100,8 @@ impl TokenMessengerMinter {
         &self,
         original_message: Bytes,
         original_attestation: Bytes,
-        new_destination_caller: Pubkey,
-        new_mint_recipient: Pubkey,
+        new_destination_caller: GenericAddress,
+        new_mint_recipient: GenericAddress,
     ) {
         let original_msg: Message = Message::new(self.version.get().unwrap(), &original_message);
         let original_burn_msg: BurnMessage =
@@ -138,7 +137,12 @@ impl TokenMessengerMinter {
         })
     }
 
-    pub fn handle_receive_message(&self, remote_domain: u32, sender: Pubkey, message_body: Bytes) {
+    pub fn handle_receive_message(
+        &self,
+        remote_domain: u32,
+        sender: GenericAddress,
+        message_body: Bytes,
+    ) {
         self.require_local_message_transmitter();
         // remote sender must be remote token messenger
         assert_eq!(
@@ -152,7 +156,7 @@ impl TokenMessengerMinter {
             BurnMessage::new(self.version.get().unwrap(), &message_body);
         assert_eq!(self.version.get().unwrap(), burn_message.version());
         let mint_recipient: GenericAddress = burn_message.mint_recipient();
-        let burn_token: Pubkey = burn_message.burn_token();
+        let burn_token: GenericAddress = burn_message.burn_token();
         let amount: u64 = burn_message.amount();
         assert!(U256::from(amount) <= self.max_burn_amount_per_message.get().unwrap());
         let mint_token = self.mint(remote_domain, burn_token, mint_recipient, amount);
@@ -174,7 +178,11 @@ impl TokenMessengerMinter {
         self.owner.set(pending_owner);
         self.pending_owner.set(None);
     }
-    pub fn add_remote_token_messenger(&mut self, domain: u32, remote_token_messenger: Pubkey) {
+    pub fn add_remote_token_messenger(
+        &mut self,
+        domain: u32,
+        remote_token_messenger: GenericAddress,
+    ) {
         self.require_owner();
         self.remote_token_messengers
             .add_remote_token_messenger(domain, remote_token_messenger);
@@ -185,7 +193,7 @@ impl TokenMessengerMinter {
     }
     pub fn remove_remote_token_messenger(&mut self, domain: u32) {
         self.require_owner();
-        let token_messenger: Pubkey = self
+        let token_messenger: GenericAddress = self
             .remote_token_messengers
             .get_remote_token_messenger(domain)
             .unwrap();
@@ -197,7 +205,12 @@ impl TokenMessengerMinter {
         });
     }
 
-    pub fn link_token_pair(&mut self, local_token: Address, remote_token: Pubkey, domain: u32) {
+    pub fn link_token_pair(
+        &mut self,
+        local_token: Address,
+        remote_token: GenericAddress,
+        domain: u32,
+    ) {
         self.require_owner();
         self.linked_token_pairs
             .set(&(domain, remote_token), Some(local_token));
@@ -207,7 +220,7 @@ impl TokenMessengerMinter {
             domain,
         });
     }
-    pub fn unlink_token_pair(&mut self, remote_token: Pubkey, domain: u32) {
+    pub fn unlink_token_pair(&mut self, remote_token: GenericAddress, domain: u32) {
         self.require_owner();
         let local_token: Address = self
             .linked_token_pairs
@@ -237,7 +250,7 @@ impl TokenMessengerMinter {
     fn mint(
         &self,
         source_domain: u32,
-        burn_token: Pubkey,
+        burn_token: GenericAddress,
         to: GenericAddress,
         amount: u64,
     ) -> Address {
@@ -264,9 +277,9 @@ impl TokenMessengerMinter {
         &self,
         burn_amount: u64,
         destination_domain: u32,
-        mint_recipient: Pubkey,
+        mint_recipient: GenericAddress,
         burn_token: GenericAddress,
-        destination_caller: Pubkey,
+        destination_caller: GenericAddress,
     ) {
         assert_ne!(burn_amount, 0u64);
         assert_ne!(mint_recipient, [0u8; 32]);
@@ -279,7 +292,7 @@ impl TokenMessengerMinter {
             burn_amount,
             &generic_address(self.env().caller()),
         );
-        let destination_token_messenger: Pubkey = self
+        let destination_token_messenger: GenericAddress = self
             .remote_token_messengers
             .get_remote_token_messenger(destination_domain)
             .unwrap();
@@ -304,8 +317,8 @@ impl TokenMessengerMinter {
     fn _send_deposit_for_burn_message(
         &self,
         destination_domain: u32,
-        destination_token_messenger: Pubkey,
-        destination_caller: Pubkey,
+        destination_token_messenger: GenericAddress,
+        destination_caller: GenericAddress,
         burn_message: Bytes,
     ) -> u64 {
         let mut local_message_transmitter: MessageTransmitterContractRef =

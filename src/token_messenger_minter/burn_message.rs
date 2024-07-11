@@ -1,5 +1,5 @@
 extern crate alloc;
-use crate::{GenericAddress, Pubkey};
+use crate::GenericAddress;
 use alloc::{vec, vec::Vec};
 
 pub struct BurnMessage<'a> {
@@ -32,7 +32,7 @@ impl<'a> BurnMessage<'a> {
         version: u32,
         // always contract
         burn_token: &GenericAddress,
-        mint_recipient: &Pubkey,
+        mint_recipient: &GenericAddress,
         amount: u64,
         // throw away the byte
         message_sender: &GenericAddress,
@@ -57,12 +57,12 @@ impl<'a> BurnMessage<'a> {
     }
 
     /// Returns burn_token field
-    pub fn burn_token(&self) -> Pubkey {
+    pub fn burn_token(&self) -> GenericAddress {
         self.read_pubkey(Self::BURN_TOKEN_INDEX)
     }
 
     /// Returns mint_pubkey field
-    pub fn mint_recipient(&self) -> Pubkey {
+    pub fn mint_recipient(&self) -> GenericAddress {
         self.read_pubkey(Self::MINT_RECIPIENT_INDEX)
     }
 
@@ -72,7 +72,7 @@ impl<'a> BurnMessage<'a> {
     }
 
     /// Returns message_sender field
-    pub fn message_sender(&self) -> Pubkey {
+    pub fn message_sender(&self) -> GenericAddress {
         self.read_pubkey(Self::MSG_SENDER_INDEX)
     }
 
@@ -91,9 +91,9 @@ impl<'a> BurnMessage<'a> {
     }
 
     /// Reads pubkey field at the given offset
-    fn read_pubkey(&self, index: usize) -> Pubkey {
-        Pubkey::try_from(
-            // Pubkey size is 32 bytes
+    fn read_pubkey(&self, index: usize) -> GenericAddress {
+        GenericAddress::try_from(
+            // GenericAddress size is 32 bytes
             &self.data[index..(index + 32)],
         )
         .unwrap()

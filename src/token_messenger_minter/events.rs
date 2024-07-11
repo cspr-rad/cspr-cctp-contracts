@@ -1,4 +1,4 @@
-use crate::{GenericAddress, Pubkey};
+use crate::GenericAddress;
 use odra::casper_types::U256;
 use odra::prelude::*;
 
@@ -8,10 +8,10 @@ pub struct DepositForBurn {
     pub burn_token: GenericAddress,
     pub amount: U256,
     pub depositor: GenericAddress,
-    pub mint_recipient: Pubkey,
+    pub mint_recipient: GenericAddress,
     pub destination_domain: u32,
-    pub destination_token_messenger: Pubkey,
-    pub destination_caller: Pubkey,
+    pub destination_token_messenger: GenericAddress,
+    pub destination_caller: GenericAddress,
 }
 
 #[odra::event]
@@ -24,25 +24,25 @@ pub struct MintAndWithdraw {
 #[odra::event]
 pub struct RemoteTokenMessengerAdded {
     pub domain: u32,
-    pub token_messenger: Pubkey,
+    pub token_messenger: GenericAddress,
 }
 
 #[odra::event]
 pub struct RemoteTokenMessengerRemoved {
     pub domain: u32,
-    pub token_messenger: Pubkey,
+    pub token_messenger: GenericAddress,
 }
 
 #[odra::event]
 pub struct TokenPairLinked {
     pub local_token: GenericAddress,
-    pub remote_token: Pubkey,
+    pub remote_token: GenericAddress,
     pub domain: u32,
 }
 
 #[odra::event]
 pub struct TokenPairUnlinked {
     pub local_token: GenericAddress,
-    pub remote_token: Pubkey,
+    pub remote_token: GenericAddress,
     pub domain: u32,
 }

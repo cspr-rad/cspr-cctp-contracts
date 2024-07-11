@@ -1,4 +1,4 @@
-use crate::{GenericAddress, Pubkey};
+use crate::GenericAddress;
 extern crate alloc;
 use alloc::{vec, vec::Vec};
 use sha3::{digest::core_api::CoreWrapper, Digest, Keccak256, Keccak256Core};
@@ -30,12 +30,12 @@ impl<'a> Message<'a> {
         local_domain: u32,
         destination_domain: u32,
         nonce: u64,
-        sender: &Pubkey,
+        sender: &GenericAddress,
         // know this is a contract
         recipient: &GenericAddress,
         // [0;32] if the destination caller can be any
         // assume this is an account
-        destination_caller: &Pubkey,
+        destination_caller: &GenericAddress,
         message_body: &[u8],
     ) -> Vec<u8> {
         let mut output: Vec<u8> = vec![0; Self::MESSAGE_BODY_INDEX + message_body.len()];
@@ -118,7 +118,7 @@ impl<'a> Message<'a> {
         )
     }
 
-    /// Reads pubkey field at the given offset
+    /// Reads GenericAddress field at the given offset
     fn read_generic_address(&self, index: usize) -> GenericAddress {
         self.data[index..(index + 32)].try_into().unwrap()
     }

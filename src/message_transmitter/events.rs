@@ -1,4 +1,4 @@
-use crate::{GenericAddress, Pubkey};
+use crate::GenericAddress;
 use odra::prelude::*;
 
 #[odra::event]
@@ -11,6 +11,6 @@ pub struct MessageReceived {
     pub caller: GenericAddress,
     pub source_domain: u32,
     pub nonce: u64,
-    pub sender: Pubkey,
+    pub sender: GenericAddress,
     pub message_body: Vec<u8>,
 }

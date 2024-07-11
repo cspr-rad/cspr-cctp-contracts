@@ -13,7 +13,6 @@ use storage::{Attesters, UsedNonces};
 
 use crate::generic_address_to_contract_address;
 use crate::GenericAddress;
-use crate::Pubkey;
 use crate::{generic_address, EthAddress};
 
 pub mod errors;
@@ -66,7 +65,7 @@ impl MessageTransmitter {
     pub fn send_message(
         &mut self,
         destination_domain: u32,
-        recipient: Pubkey,
+        recipient: GenericAddress,
         message_body: Bytes,
     ) -> u64 {
         self.require_not_paused();
@@ -88,9 +87,9 @@ impl MessageTransmitter {
     pub fn send_message_with_caller(
         &mut self,
         destination_domain: u32,
-        recipient: Pubkey,
+        recipient: GenericAddress,
         message_body: Bytes,
-        destination_caller: Pubkey,
+        destination_caller: GenericAddress,
     ) -> u64 {
         self.require_not_paused();
         let nonce: u64 = self.next_available_nonce.get().unwrap();
@@ -112,7 +111,7 @@ impl MessageTransmitter {
         original_message: Bytes,
         original_attestation: Bytes,
         new_message_body: Bytes,
-        new_destination_caller: Pubkey,
+        new_destination_caller: GenericAddress,
     ) {
         let original_msg: Message = Message::new(self.version.get().unwrap(), &original_message);
         let message_hasher = original_msg.hasher();
@@ -228,8 +227,8 @@ impl MessageTransmitter {
     fn _send_message(
         &self,
         destination_domain: u32,
-        recipient: Pubkey,
-        destination_caller: Pubkey,
+        recipient: GenericAddress,
+        destination_caller: GenericAddress,
         sender: GenericAddress,
         nonce: u64,
         message_body: Bytes,
@@ -308,6 +307,3 @@ fn recover_ethereum_address(pubkey: [u8; 64]) -> EthAddress {
         .try_into()
         .expect("Failed to fit pubkey into slice")
 }
-
-#[test]
-fn test_pubkey_recovery() {}

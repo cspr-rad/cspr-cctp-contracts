@@ -11,8 +11,6 @@ pub mod stablecoin;
 mod tests;
 pub mod token_messenger_minter;
 
-// type alias for generic Pubkey
-pub type Pubkey = [u8; 32];
 // type alias for Ethereum Address
 pub type EthAddress = [u8; 20];
 // type alias for a generic Casper Address

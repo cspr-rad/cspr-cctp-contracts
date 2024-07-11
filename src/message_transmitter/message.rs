@@ -1,7 +1,7 @@
 use crate::{GenericAddress, Pubkey};
 extern crate alloc;
 use alloc::{vec, vec::Vec};
-use tiny_keccak::{Hasher, Keccak};
+use sha3::{Digest, Keccak256};
 pub struct Message<'a> {
     pub data: &'a [u8],
 }
@@ -59,11 +59,9 @@ impl<'a> Message<'a> {
 
     /// Returns Keccak hash of the message
     pub fn hash(&self) -> [u8; 32] {
-        let mut hasher = Keccak::v384();
-        let mut output = [0u8; 32];
+        let mut hasher = Keccak256::new();
         hasher.update(self.data);
-        hasher.finalize(&mut output);
-        output
+        hasher.finalize().as_slice().try_into().unwrap()
     }
 
     /// Returns version field

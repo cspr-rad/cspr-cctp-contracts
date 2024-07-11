@@ -1,6 +1,5 @@
 //! CEP-18 Casper Fungible Token standard implementation.
-use odra::prelude::*;
-use odra::{casper_types::U256, Address, Mapping, SubModule, UnwrapOrRevert, Var};
+use odra::{casper_types::U256, prelude::*, Address, Mapping, SubModule, UnwrapOrRevert, Var};
 
 pub mod cross_contract_test;
 pub mod errors;

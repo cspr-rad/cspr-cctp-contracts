@@ -48,7 +48,7 @@ mod test_setup {
             version: 2u32,
             max_message_body_size: 1_000_000.into(),
             next_available_nonce: 0u64,
-            signature_threshold: 1u32,
+            signature_threshold: 0u32,
             owner,
         };
         let message_transmitter: MessageTransmitterHostRef =
@@ -225,7 +225,7 @@ mod test_setup {
             Bytes::from(message.clone()),
             Bytes::from(vec![]),
             [0u8; 32],
-            [0u8; 32],
+            [1u8; 32],
         );
         assert!(
             env.emitted(message_transmitter.address(), "MessageSent"),

@@ -1,4 +1,3 @@
-use crate::Pubkey;
 use odra::{prelude::*, Mapping};
 
 #[odra::module()]
@@ -19,18 +18,18 @@ impl UsedNonces {
 
 #[odra::module()]
 pub struct Attesters {
-    attesters: Mapping<Pubkey, bool>,
+    attesters: Mapping<[u8; 33], bool>,
 }
 
 #[odra::module]
 impl Attesters {
-    pub fn enable_attester(&mut self, attester: Pubkey) {
+    pub fn enable_attester(&mut self, attester: [u8; 33]) {
         self.attesters.set(&attester, true);
     }
-    pub fn disable_attester(&mut self, attester: Pubkey) {
+    pub fn disable_attester(&mut self, attester: [u8; 33]) {
         self.attesters.set(&attester, false);
     }
-    pub fn is_attester(&self, attester: Pubkey) -> bool {
+    pub fn is_attester(&self, attester: [u8; 33]) -> bool {
         self.attesters.get(&attester).unwrap()
     }
 }

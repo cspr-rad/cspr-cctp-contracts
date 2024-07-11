@@ -1,15 +1,15 @@
-use events::MessageReceived;
-use events::MessageSent;
-use odra::casper_types::bytesrepr::Bytes;
-use odra::casper_types::bytesrepr::ToBytes;
-use odra::casper_types::U256;
-use odra::prelude::*;
-use odra::Address;
-use odra::SubModule;
-use odra::Var;
-use storage::Attesters;
-use storage::UsedNonces;
-use tiny_keccak::Hasher;
+use events::{MessageReceived, MessageSent};
+use k256::ecdsa::{RecoveryId, Signature, VerifyingKey};
+use odra::{
+    casper_types::{
+        bytesrepr::{Bytes, ToBytes},
+        U256,
+    },
+    prelude::*,
+    Address, SubModule, Var,
+};
+use sha3::{Digest, Keccak256};
+use storage::{Attesters, UsedNonces};
 
 use crate::generic_address;
 use crate::generic_address_to_contract_address;
@@ -24,7 +24,6 @@ use message::Message;
 
 use crate::token_messenger_minter::TokenMessengerMinterContractRef;
 use errors::Error;
-use tiny_keccak::Keccak;
 
 #[odra::module]
 pub struct MessageTransmitter {
@@ -113,9 +112,13 @@ impl MessageTransmitter {
         new_message_body: Bytes,
         new_destination_caller: Pubkey,
     ) {
-        // todo: verify attestation signatures
-        // todo: validate message format
         let original_msg: Message = Message::new(self.version.get().unwrap(), &original_message);
+        // verify original attestation
+        for chunk in original_attestation.to_vec().chunks(64) {
+            let pubkey_recovered: [u8; 33] =
+                verify_attestation_signature(original_msg.hash(), chunk.try_into().unwrap());
+            assert!(self.attesters.is_attester(pubkey_recovered));
+        }
         let sender = original_msg.sender();
         // Message must be replaced by the MessengerMinter that submitted the original message.
         assert_eq!(generic_address(self.env().caller()), sender);
@@ -134,8 +137,15 @@ impl MessageTransmitter {
     }
     pub fn receive_message(&mut self, data: Bytes, attestation: Bytes) {
         self.require_not_paused();
-        // todo: verify attestations and check that the threshold is met
         let message: Message = Message::new(self.version.get().unwrap(), &data);
+        let mut valid_attestations = 0;
+        for chunk in attestation.to_vec().chunks(64) {
+            let pubkey_recovered: [u8; 33] =
+                verify_attestation_signature(message.hash(), chunk.try_into().unwrap());
+            assert!(self.attesters.is_attester(pubkey_recovered));
+            valid_attestations += 1;
+        }
+        assert!(valid_attestations >= self.signature_threshold.get().unwrap());
         assert_eq!(message.version(), self.version.get().unwrap());
         let destination_caller: [u8; 32] = message.destination_caller();
         if destination_caller != [0u8; 32]
@@ -204,11 +214,11 @@ impl MessageTransmitter {
         let nonce_hashed = hash_nonce(nonce, account);
         self.used_nonces.is_used_nonce(nonce_hashed)
     }
-    pub fn enable_attester(&mut self, new_attester: Pubkey) {
+    pub fn enable_attester(&mut self, new_attester: [u8; 33]) {
         self.require_owner();
         self.attesters.enable_attester(new_attester);
     }
-    pub fn disable_attester(&mut self, attester: Pubkey) {
+    pub fn disable_attester(&mut self, attester: [u8; 33]) {
         self.require_owner();
         self.attesters.disable_attester(attester);
     }
@@ -251,10 +261,35 @@ impl MessageTransmitter {
     }
 }
 fn hash_nonce(nonce: u64, account: GenericAddress) -> [u8; 32] {
-    let mut hasher = Keccak::v384();
-    let mut output = [0u8; 32];
+    let mut hasher = Keccak256::new();
     hasher.update(&nonce.to_bytes().unwrap());
     hasher.update(&account);
-    hasher.finalize(&mut output);
-    output
+    hasher.finalize().as_slice().try_into().unwrap()
+}
+fn verify_attestation_signature(message_hash: [u8; 32], signature: [u8; 64]) -> [u8; 33] {
+    let recid: RecoveryId = RecoveryId::try_from(1u8).unwrap();
+    let mut hasher = Keccak256::new();
+    hasher.update(message_hash);
+    let recovered_key = VerifyingKey::recover_from_digest(
+        hasher,
+        &Signature::from_bytes(&signature.into()).unwrap(),
+        recid,
+    )
+    .unwrap();
+    recovered_key
+        .to_encoded_point(true)
+        .as_ref()
+        .try_into()
+        .expect("Failed to fit vk into slice")
+}
+
+#[test]
+fn test_pubkey_recovery() {
+    use k256::ecdsa::signature::SignerMut;
+    let message_hash = [0u8; 32];
+    let mut sk =
+        k256::ecdsa::SigningKey::from_slice(&[1; 32]).expect("Failed to construct SigningKey");
+    let signature: Signature = sk.sign(&message_hash);
+    let _recovered_pubkey: [u8; 33] =
+        verify_attestation_signature(message_hash, signature.to_bytes().into());
 }

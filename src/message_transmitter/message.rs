@@ -1,7 +1,7 @@
 use crate::{GenericAddress, Pubkey};
 extern crate alloc;
 use alloc::{vec, vec::Vec};
-use sha3::{Digest, Keccak256};
+use sha3::{digest::core_api::CoreWrapper, Digest, Keccak256, Keccak256Core};
 pub struct Message<'a> {
     pub data: &'a [u8],
 }
@@ -36,7 +36,7 @@ impl<'a> Message<'a> {
         // [0;32] if the destination caller can be any
         // assume this is an account
         destination_caller: &Pubkey,
-        message_body: &Vec<u8>,
+        message_body: &[u8],
     ) -> Vec<u8> {
         let mut output: Vec<u8> = vec![0; Self::MESSAGE_BODY_INDEX + message_body.len()];
         output[Self::VERSION_INDEX..Self::SOURCE_DOMAIN_INDEX]
@@ -52,16 +52,16 @@ impl<'a> Message<'a> {
         output[Self::DESTINATION_CALLER_INDEX..Self::MESSAGE_BODY_INDEX]
             .copy_from_slice(destination_caller.as_ref());
         if !message_body.is_empty() {
-            output[Self::MESSAGE_BODY_INDEX..].copy_from_slice(message_body.as_slice());
+            output[Self::MESSAGE_BODY_INDEX..].copy_from_slice(message_body);
         }
         output
     }
 
     /// Returns Keccak hash of the message
-    pub fn hash(&self) -> [u8; 32] {
+    pub fn hasher(&self) -> CoreWrapper<Keccak256Core> {
         let mut hasher = Keccak256::new();
         hasher.update(self.data);
-        hasher.finalize().as_slice().try_into().unwrap()
+        hasher
     }
 
     /// Returns version field

@@ -8,7 +8,7 @@ use odra::{
     prelude::*,
     Address, SubModule, Var,
 };
-use sha3::{Digest, Keccak256};
+use sha3::{digest::core_api::CoreWrapper, Digest, Keccak256, Keccak256Core};
 use storage::{Attesters, UsedNonces};
 
 use crate::generic_address_to_contract_address;
@@ -113,12 +113,9 @@ impl MessageTransmitter {
         new_destination_caller: Pubkey,
     ) {
         let original_msg: Message = Message::new(self.version.get().unwrap(), &original_message);
+        let message_hasher = original_msg.hasher();
         // verify original attestation
-        for chunk in original_attestation.to_vec().chunks(64) {
-            let pubkey_recovered: EthAddress =
-                recover_attester(original_msg.hash(), chunk.try_into().unwrap());
-            assert!(self.attesters.is_attester(pubkey_recovered));
-        }
+        self.verify_attestation_signatures(message_hasher, &original_attestation);
         let sender = original_msg.sender();
         // Message must be replaced by the MessengerMinter that submitted the original message.
         assert_eq!(generic_address(self.env().caller()), sender);
@@ -138,15 +135,8 @@ impl MessageTransmitter {
     pub fn receive_message(&mut self, data: Bytes, attestation: Bytes) {
         self.require_not_paused();
         let message: Message = Message::new(self.version.get().unwrap(), &data);
-        let mut valid_attestations = 0;
-        // todo: check ascending order
-        for chunk in attestation.to_vec().chunks(64) {
-            let pubkey_recovered: EthAddress =
-                recover_attester(message.hash(), chunk.try_into().unwrap());
-            assert!(self.attesters.is_attester(pubkey_recovered));
-            valid_attestations += 1;
-        }
-        assert!(valid_attestations >= self.signature_threshold.get().unwrap());
+        let message_hasher = message.hasher();
+        self.verify_attestation_signatures(message_hasher, attestation.as_ref());
         assert_eq!(message.version(), self.version.get().unwrap());
         let destination_caller: [u8; 32] = message.destination_caller();
         if destination_caller != [0u8; 32]
@@ -253,12 +243,30 @@ impl MessageTransmitter {
             &sender,
             &recipient,
             &destination_caller,
-            &message_body.to_vec(),
+            message_body.as_ref(),
         );
         let message: Message = Message::new(self.version.get().unwrap(), message_body);
         self.env().emit_event(MessageSent {
             message: message.data.to_vec(),
         });
+    }
+    fn verify_attestation_signatures(
+        &self,
+        message_hasher: CoreWrapper<Keccak256Core>,
+        attestation: &[u8],
+    ) {
+        let mut valid_attestations = 0;
+        // todo: check ascending order
+        let mut last_attester: EthAddress = [0u8; 20];
+        for signature in attestation.to_vec().chunks(64) {
+            let pubkey_recovered: EthAddress =
+                recover_attester(message_hasher.clone(), signature.try_into().unwrap());
+            assert!(pubkey_recovered > last_attester);
+            assert!(self.attesters.is_attester(pubkey_recovered));
+            valid_attestations += 1;
+            last_attester = pubkey_recovered;
+        }
+        assert!(valid_attestations >= self.signature_threshold.get().unwrap());
     }
 }
 fn hash_nonce(nonce: u64, account: GenericAddress) -> [u8; 32] {
@@ -268,12 +276,10 @@ fn hash_nonce(nonce: u64, account: GenericAddress) -> [u8; 32] {
     hasher.finalize().as_slice().try_into().unwrap()
 }
 
-fn recover_attester(message_hash: [u8; 32], signature: [u8; 64]) -> EthAddress {
+fn recover_attester(message_hasher: CoreWrapper<Keccak256Core>, signature: [u8; 64]) -> EthAddress {
     let recid: RecoveryId = RecoveryId::try_from(1u8).unwrap();
-    let mut hasher = Keccak256::new();
-    hasher.update(message_hash);
     let recovered_key = VerifyingKey::recover_from_digest(
-        hasher,
+        message_hasher,
         &Signature::from_bytes(&signature.into()).unwrap(),
         recid,
     )
@@ -294,11 +300,4 @@ fn recover_ethereum_address(pubkey: [u8; 64]) -> EthAddress {
 }
 
 #[test]
-fn test_pubkey_recovery() {
-    use k256::ecdsa::signature::SignerMut;
-    let message_hash = [0u8; 32];
-    let mut sk =
-        k256::ecdsa::SigningKey::from_slice(&[1; 32]).expect("Failed to construct SigningKey");
-    let signature: Signature = sk.sign(&message_hash);
-    recover_attester(message_hash, signature.to_bytes().into());
-}
+fn test_pubkey_recovery() {}

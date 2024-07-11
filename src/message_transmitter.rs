@@ -25,6 +25,8 @@ use message::Message;
 use crate::token_messenger_minter::TokenMessengerMinterContractRef;
 use errors::Error;
 
+const SIGNATURE_LENGTH: usize = 65;
+
 #[odra::module]
 pub struct MessageTransmitter {
     local_domain: Var<u32>,
@@ -255,10 +257,13 @@ impl MessageTransmitter {
         message_hasher: CoreWrapper<Keccak256Core>,
         attestation: &[u8],
     ) {
+        assert_eq!(
+            attestation.len(),
+            64 * self.signature_threshold.get().unwrap() as usize
+        );
         let mut valid_attestations = 0;
-        // todo: check ascending order
         let mut last_attester: EthAddress = [0u8; 20];
-        for signature in attestation.to_vec().chunks(64) {
+        for signature in attestation.to_vec().chunks(SIGNATURE_LENGTH) {
             let pubkey_recovered: EthAddress =
                 recover_attester(message_hasher.clone(), signature.try_into().unwrap());
             assert!(pubkey_recovered > last_attester);
@@ -276,8 +281,13 @@ fn hash_nonce(nonce: u64, account: GenericAddress) -> [u8; 32] {
     hasher.finalize().as_slice().try_into().unwrap()
 }
 
-fn recover_attester(message_hasher: CoreWrapper<Keccak256Core>, signature: [u8; 64]) -> EthAddress {
+fn recover_attester(
+    message_hasher: CoreWrapper<Keccak256Core>,
+    signature: &[u8; SIGNATURE_LENGTH],
+) -> EthAddress {
     let recid: RecoveryId = RecoveryId::try_from(1u8).unwrap();
+    let signature: [u8; SIGNATURE_LENGTH - 1] =
+        signature[0..SIGNATURE_LENGTH - 1].try_into().unwrap();
     let recovered_key = VerifyingKey::recover_from_digest(
         message_hasher,
         &Signature::from_bytes(&signature.into()).unwrap(),

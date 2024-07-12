@@ -251,6 +251,7 @@ mod test_setup {
     }
     #[test]
     fn test_receive_message_from_remote_domain_with_signatures() {
+        const SIGNATURE_THRESHOLD: u32 = 2;
         let (
             env,
             mut stablecoin,
@@ -260,7 +261,7 @@ mod test_setup {
             master_minter,
             ..,
             controller,
-        ) = setup_cctp_contracts_with_signature_threshold(2);
+        ) = setup_cctp_contracts_with_signature_threshold(SIGNATURE_THRESHOLD);
         let remote_token_address: [u8; 32] = [10u8; 32];
         let remote_token_messenger: [u8; 32] = [11u8; 32];
         let remote_domain: u32 = 0;
@@ -333,7 +334,7 @@ mod test_setup {
 
         let mut attestation = first_signature_bytes;
         attestation.append(&mut second_signature_bytes);
-        assert_eq!(attestation.len(), 65 * 2);
+        assert_eq!(attestation.len(), (65 * SIGNATURE_THRESHOLD) as usize);
 
         message_transmitter.receive_message(Bytes::from(message), Bytes::from(attestation));
         assert!(

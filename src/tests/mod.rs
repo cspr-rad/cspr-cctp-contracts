@@ -1,17 +1,19 @@
 #[cfg(test)]
+mod signature;
+#[cfg(test)]
 mod test_setup {
+    use super::signature::{construct_keypair, sign_message, recover_ethereum_address};
     use crate::message_transmitter::{MessageTransmitterHostRef, MessageTransmitterInitArgs};
     use crate::stablecoin::StablecoinHostRef;
     use crate::stablecoin::StablecoinInitArgs;
     use crate::token_messenger_minter::{
         TokenMessengerMinterHostRef, TokenMessengerMinterInitArgs,
     };
-    use crate::{generic_address, generic_address_to_contract_address, EthAddress};
+    use crate::{generic_address, generic_address_to_contract_address};
     use crate::{
         message_transmitter::message::Message, token_messenger_minter::burn_message::BurnMessage,
     };
-    use alloy::primitives::Keccak256;
-    use k256::ecdsa::{RecoveryId, Signature, SigningKey};
+    use k256::ecdsa::{RecoveryId, Signature};
     use odra::casper_types::bytesrepr::Bytes;
     use odra::casper_types::U256;
     use odra::host::Deployer;
@@ -302,17 +304,15 @@ mod test_setup {
         let message_hash = message_typed.hash();
         let first_attester_bytes: [u8; 32] = [1; 32];
         let second_attester_bytes: [u8; 32] = [2; 32];
-        let first_attester_sk = SigningKey::from_slice(&first_attester_bytes).unwrap();
-        let second_attester_sk = SigningKey::from_slice(&second_attester_bytes).unwrap();
-        let first_attester_public_key = *first_attester_sk.clone().verifying_key();
-        let second_attester_public_key = *second_attester_sk.clone().verifying_key();
+        let (first_attester_sk, first_attester_vk) = construct_keypair(first_attester_bytes);
+        let (second_attester_sk, second_attester_vk) = construct_keypair(second_attester_bytes);
         let first_attester_ethereum_address = recover_ethereum_address(
-            first_attester_public_key.to_encoded_point(false).as_ref()[1..]
+            first_attester_vk.to_encoded_point(false).as_ref()[1..]
                 .try_into()
                 .unwrap(),
         );
         let second_attester_ethereum_address = recover_ethereum_address(
-            second_attester_public_key.to_encoded_point(false).as_ref()[1..]
+            second_attester_vk.to_encoded_point(false).as_ref()[1..]
                 .try_into()
                 .unwrap(),
         );
@@ -326,14 +326,11 @@ mod test_setup {
         let mut first_signature_bytes = signature.to_bytes().to_vec();
         first_signature_bytes.push(recovery_id.to_byte() + 27u8);
 
-        let (signature, recovery_id): (Signature, RecoveryId) = second_attester_sk
-            .sign_prehash_recoverable(&message_hash)
-            .unwrap();
-        let mut second_signature_bytes = signature.to_bytes().to_vec();
-        second_signature_bytes.push(recovery_id.to_byte() + 27u8);
+        let first_signature_bytes = sign_message(first_attester_sk, &message_hash);
+        let second_signature_bytes = sign_message(second_attester_sk, &message_hash);
 
-        let mut attestation = first_signature_bytes;
-        attestation.append(&mut second_signature_bytes);
+        let mut attestation = first_signature_bytes.to_vec();
+        attestation.extend_from_slice(&second_signature_bytes);
         assert_eq!(attestation.len(), (65 * SIGNATURE_THRESHOLD) as usize);
 
         message_transmitter.receive_message(Bytes::from(message), Bytes::from(attestation));
@@ -341,14 +338,5 @@ mod test_setup {
             env.emitted(message_transmitter.address(), "MessageReceived"),
             "MessageReceived event not emitted"
         );
-
-        fn recover_ethereum_address(pubkey: [u8; 64]) -> EthAddress {
-            let mut hasher = Keccak256::new();
-            hasher.update(pubkey);
-            let hash = hasher.finalize();
-            hash.as_slice()[12..]
-                .try_into()
-                .expect("Failed to fit pubkey into slice")
-        }
     }
 }

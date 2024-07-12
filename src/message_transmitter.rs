@@ -6,7 +6,7 @@ use odra::{
         U256,
     },
     prelude::*,
-    Address, SubModule, Var,
+    Address, SubModule, UnwrapOrRevert, Var,
 };
 use sha3::{Digest, Keccak256};
 use storage::{Attesters, UsedNonces};
@@ -251,21 +251,19 @@ impl MessageTransmitter {
         });
     }
     fn verify_attestation_signatures(&self, message_hash: &[u8; 32], attestation: &[u8]) {
-        assert_eq!(
-            attestation.len(),
-            64 * self.signature_threshold.get().unwrap() as usize
-        );
-        let mut valid_attestations = 0;
+        if (65u32 * self.signature_threshold.get().unwrap_or_revert(&self.env())) as usize
+            != attestation.len()
+        {
+            self.env().revert(Error::InvalidAttestationLength)
+        }
         let mut last_attester: EthAddress = [0u8; 20];
         for signature in attestation.to_vec().chunks(SIGNATURE_LENGTH) {
             let pubkey_recovered: EthAddress =
                 recover_attester(message_hash, signature.try_into().unwrap());
             assert!(pubkey_recovered > last_attester);
             assert!(self.attesters.is_attester(pubkey_recovered));
-            valid_attestations += 1;
             last_attester = pubkey_recovered;
         }
-        assert!(valid_attestations >= self.signature_threshold.get().unwrap());
     }
 }
 fn hash_nonce(nonce: u64, account: GenericAddress) -> [u8; 32] {
@@ -278,16 +276,18 @@ fn hash_nonce(nonce: u64, account: GenericAddress) -> [u8; 32] {
 fn recover_attester(message_hash: &[u8; 32], signature: &[u8; SIGNATURE_LENGTH]) -> EthAddress {
     let recovery_byte = signature[SIGNATURE_LENGTH - 1];
     assert!((27..=30).contains(&recovery_byte));
-    let recovery_id = RecoveryId::from_byte(signature[SIGNATURE_LENGTH - 1] - 27u8).unwrap();
-    let signature: [u8; SIGNATURE_LENGTH - 1] =
-        signature[0..SIGNATURE_LENGTH - 1].try_into().unwrap();
+    let recovery_id = RecoveryId::from_byte(signature[SIGNATURE_LENGTH - 1] - 27u8)
+        .expect("Failed to get recovery Id");
+    let signature: [u8; SIGNATURE_LENGTH - 1] = signature[0..SIGNATURE_LENGTH - 1]
+        .try_into()
+        .expect("Failed to read signatrue");
     // todo: refactor using recover_from_prehash
     let recovered_key = VerifyingKey::recover_from_prehash(
         message_hash,
         &Signature::from_slice(&signature).unwrap(),
         recovery_id,
     )
-    .unwrap();
+    .expect("Failed to recover from prehash");
     recover_ethereum_address(
         recovered_key.to_encoded_point(false).as_ref()[1..]
             .try_into()

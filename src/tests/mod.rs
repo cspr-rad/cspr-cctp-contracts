@@ -6,17 +6,21 @@ mod test_setup {
     use crate::token_messenger_minter::{
         TokenMessengerMinterHostRef, TokenMessengerMinterInitArgs,
     };
-    use crate::{generic_address, generic_address_to_contract_address};
+    use crate::{generic_address, generic_address_to_contract_address, EthAddress};
     use crate::{
         message_transmitter::message::Message, token_messenger_minter::burn_message::BurnMessage,
     };
+    use alloy::primitives::Keccak256;
+    use k256::ecdsa::{RecoveryId, Signature, SigningKey};
     use odra::casper_types::bytesrepr::Bytes;
     use odra::casper_types::U256;
     use odra::host::Deployer;
     use odra::host::HostEnv;
     use odra::{Address, Addressable};
 
-    fn setup_cctp_contracts() -> (
+    fn setup_cctp_contracts_with_signature_threshold(
+        signature_threshold: u32,
+    ) -> (
         HostEnv,
         StablecoinHostRef,
         MessageTransmitterHostRef,
@@ -48,7 +52,7 @@ mod test_setup {
             version: 2u32,
             max_message_body_size: 1_000_000.into(),
             next_available_nonce: 0u64,
-            signature_threshold: 0u32,
+            signature_threshold,
             owner,
         };
         let message_transmitter: MessageTransmitterHostRef =
@@ -73,6 +77,19 @@ mod test_setup {
             blacklister,
             controller,
         )
+    }
+
+    fn setup_cctp_contracts() -> (
+        HostEnv,
+        StablecoinHostRef,
+        MessageTransmitterHostRef,
+        TokenMessengerMinterHostRef,
+        Address,
+        Address,
+        Address,
+        Address,
+    ) {
+        setup_cctp_contracts_with_signature_threshold(0u32)
     }
     #[test]
     fn test_deposit_for_burn() {
@@ -231,5 +248,106 @@ mod test_setup {
             env.emitted(message_transmitter.address(), "MessageSent"),
             "MessageSent event not emitted"
         );
+    }
+    #[test]
+    fn test_receive_message_from_remote_domain_with_signatures() {
+        let (
+            env,
+            mut stablecoin,
+            mut message_transmitter,
+            mut token_messenger_minter,
+            owner,
+            master_minter,
+            ..,
+            controller,
+        ) = setup_cctp_contracts_with_signature_threshold(2);
+        let remote_token_address: [u8; 32] = [10u8; 32];
+        let remote_token_messenger: [u8; 32] = [11u8; 32];
+        let remote_domain: u32 = 0;
+        let mint_recipient: Address = env.get_account(0);
+        env.set_caller(master_minter);
+        stablecoin.configure_controller(&controller, token_messenger_minter.address());
+        env.set_caller(controller);
+        stablecoin.configure_minter_allowance(100.into());
+        env.set_caller(owner);
+        // message sender must be a remote_token_messenger
+        token_messenger_minter.add_remote_token_messenger(remote_domain, remote_token_messenger);
+        token_messenger_minter.link_token_pair(
+            *stablecoin.address(),
+            remote_token_address,
+            remote_domain,
+        );
+        let message_body: Vec<u8> = BurnMessage::format_message(
+            2,
+            &remote_token_address,
+            &generic_address(mint_recipient),
+            10,
+            &remote_token_messenger,
+        );
+        let message: Vec<u8> = Message::format_message(
+            2,
+            remote_domain,
+            32,
+            0,
+            &remote_token_messenger,
+            &generic_address(token_messenger_minter.address().clone()),
+            &[0u8; 32],
+            &message_body,
+        );
+        let message_typed: Message = Message::new(2, &message);
+        let message_recipient = message_typed.recipient();
+        let message_recipient_address = generic_address_to_contract_address(message_recipient);
+        assert_eq!(&message_recipient_address, token_messenger_minter.address());
+        let message_hash = message_typed.hash();
+        let first_attester_bytes: [u8; 32] = [1; 32];
+        let second_attester_bytes: [u8; 32] = [2; 32];
+        let first_attester_sk = SigningKey::from_slice(&first_attester_bytes).unwrap();
+        let second_attester_sk = SigningKey::from_slice(&second_attester_bytes).unwrap();
+        let first_attester_public_key = *first_attester_sk.clone().verifying_key();
+        let second_attester_public_key = *second_attester_sk.clone().verifying_key();
+        let first_attester_ethereum_address = recover_ethereum_address(
+            first_attester_public_key.to_encoded_point(false).as_ref()[1..]
+                .try_into()
+                .unwrap(),
+        );
+        let second_attester_ethereum_address = recover_ethereum_address(
+            second_attester_public_key.to_encoded_point(false).as_ref()[1..]
+                .try_into()
+                .unwrap(),
+        );
+        env.set_caller(owner);
+        message_transmitter.enable_attester(first_attester_ethereum_address);
+        message_transmitter.enable_attester(second_attester_ethereum_address);
+
+        let (signature, recovery_id): (Signature, RecoveryId) = first_attester_sk
+            .sign_prehash_recoverable(&message_hash)
+            .unwrap();
+        let mut first_signature_bytes = signature.to_bytes().to_vec();
+        first_signature_bytes.push(recovery_id.to_byte() + 27u8);
+
+        let (signature, recovery_id): (Signature, RecoveryId) = second_attester_sk
+            .sign_prehash_recoverable(&message_hash)
+            .unwrap();
+        let mut second_signature_bytes = signature.to_bytes().to_vec();
+        second_signature_bytes.push(recovery_id.to_byte() + 27u8);
+
+        let mut attestation = first_signature_bytes;
+        attestation.append(&mut second_signature_bytes);
+        assert_eq!(attestation.len(), 65 * 2);
+
+        message_transmitter.receive_message(Bytes::from(message), Bytes::from(attestation));
+        assert!(
+            env.emitted(message_transmitter.address(), "MessageReceived"),
+            "MessageReceived event not emitted"
+        );
+
+        fn recover_ethereum_address(pubkey: [u8; 64]) -> EthAddress {
+            let mut hasher = Keccak256::new();
+            hasher.update(pubkey);
+            let hash = hasher.finalize();
+            hash.as_slice()[12..]
+                .try_into()
+                .expect("Failed to fit pubkey into slice")
+        }
     }
 }

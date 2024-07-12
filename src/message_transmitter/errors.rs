@@ -5,4 +5,5 @@ pub enum Error {
     ContractIsPaused = 50001,
     InvalidMessageRecipient = 50002,
     InvalidSignatureRecoveryId = 50003,
+    InvalidAttestationLength = 50004,
 }
